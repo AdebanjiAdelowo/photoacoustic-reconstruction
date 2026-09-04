@@ -1,14 +1,23 @@
 # Architecture — Photoacoustic Reconstruction
 
-Status: planning document. Every section below is a plan, not a report of completed work.
+**Status: MVP implemented and verified** (see `IMPLEMENTATION_LOG.md` for the stage-by-stage
+record and `report/mvp_results.txt` for real results). Sections below describe both what was
+actually built (phantom generation, forward simulation, time-reversal baseline, U-Net refinement,
+PSNR/SSIM evaluation — all real) and what remains genuinely unimplemented strong-version/extension
+scope (Tikhonov baseline, full sparsity sweep, multiple phantom families, uncertainty
+quantification) — the two are distinguished explicitly at each relevant section rather than left
+ambiguous.
 
 ## 1. Research problem
 
 **Central question:** under a synthetic sparse-view photoacoustic sensor array, does a learned
 reconstruction (a U-Net refining a classical inversion) recover the initial-pressure distribution
-of a phantom more accurately, and with fewer artefacts, than filtered back-projection (FBP) or
-Tikhonov-regularised least-squares inversion — and how does the accuracy gap between them change as
-view-sparsity increases?
+of a phantom more accurately, and with fewer artefacts, than time-reversal reconstruction (MVP,
+**implemented**) or Tikhonov-regularised least-squares inversion (strong-version, **not yet
+implemented**) — and how does the accuracy gap change as view-sparsity increases? **Answered for
+the MVP baseline:** yes on PSNR (+11–12 dB at both sparsity settings) and visually (streak
+artefacts largely removed), with a diagnosed, honestly-reported exception on whole-image SSIM — see
+`report/mvp_results.txt`.
 
 **Motivation:** photoacoustic/optoacoustic tomography is a genuine PDE-governed inverse problem
 (the forward model is the acoustic wave equation); sparse/limited-view sensing is the practically
@@ -42,14 +51,17 @@ series $y_k(t) = p(\mathbf{x}_k, t)$.
   `j-Wave`'s own documented workflow for initial-value-problem photoacoustic reconstruction in
   homogeneous media (verified during architecture review — see §5). Degrades under sparse/limited
   -view sensing, which is exactly the regime this project studies.
-- **Classical baseline 2 — Tikhonov-regularised inversion:** $\hat{p}_0 = \arg\min_{p_0}
-  \|A p_0 - y\|_2^2 + \lambda \|p_0\|_2^2$. Because `j-Wave`'s forward simulation is differentiable
-  (JAX-based), this can be solved by gradient descent directly through the forward model, without
-  needing to assemble an explicit forward-operator matrix $A$ — a genuine technical advantage of the
-  verified library choice, discovered during this review, not part of the original plan.
-- **Learned reconstruction:** a U-Net $f_\theta$ trained to refine the FBP/Tikhonov estimate,
-  $\hat{p}_0^{\text{learned}} = f_\theta(\hat{p}_0^{\text{FBP}})$, trained on paired
-  (degraded-reconstruction, ground-truth-phantom) examples from simulated data.
+- **Classical baseline 2 — Tikhonov-regularised inversion (NOT YET IMPLEMENTED — strong-version
+  scope):** $\hat{p}_0 = \arg\min_{p_0} \|A p_0 - y\|_2^2 + \lambda \|p_0\|_2^2$. Because `j-Wave`'s
+  forward simulation is differentiable (JAX-based), this can be solved by gradient descent directly
+  through the forward model, without needing to assemble an explicit forward-operator matrix $A$ —
+  a genuine technical advantage of the verified library choice, discovered during architecture
+  review, not part of the original plan. Not built in the MVP pass.
+- **Learned reconstruction (implemented):** a U-Net $f_\theta$ trained to refine the time-reversal
+  estimate, $\hat{p}_0^{\text{learned}} = f_\theta(\hat{p}_0^{\text{TR}})$, trained on paired
+  (degraded-reconstruction, ground-truth-phantom) examples from simulated data. (Not FBP/Tikhonov —
+  those names in earlier drafts of this document were placeholders; the actual MVP baseline the
+  network refines is time-reversal, per `src/baselines.py`.)
 
 **Evaluation formulation:** for a held-out phantom set and a sweep of sensor counts
 $K \in \{K_1, \ldots, K_n\}$ (equivalently, sparsity ratios), compute PSNR/SSIM between each
@@ -58,13 +70,13 @@ method's reconstruction and ground truth, and report accuracy as a function of $
 ## 3. System architecture
 
 ```
-phantom generator ──▶ forward model (wave PDE simulation) ──▶ sensor data y
+phantom generator ──▶ forward model (wave PDE simulation) ──▶ sensor data y      [ALL IMPLEMENTED]
                                                                     │
                                      ┌──────────────────────────────┼──────────────────────────────┐
                                      ▼                              ▼                              ▼
-                          FBP baseline                Tikhonov baseline                 FBP/Tikhonov + U-Net
-                          (closed-form)                (regularised LS)                 (learned refinement)
-                                     │                              │                              │
+                    time-reversal baseline          Tikhonov baseline (NOT BUILT)        TR + U-Net
+                    (implemented)                    (strong-version scope)         (learned refinement,
+                                     │                              │                    implemented)
                                      └──────────────────────────────┴──────────────────────────────┘
                                                                     ▼
                                                     evaluation (PSNR/SSIM vs. ground truth,
@@ -117,39 +129,46 @@ description of what will go there.
   relevance to the Helmholtz/IBMI Data Science position's interest in "uncertainty quantification,
   robust inference").
 
-## 6. Experiments (planned, not run)
+## 6. Experiments
 
-| Experiment | Purpose |
-|---|---|
-| E1 — single phantom, 2 sparsity levels | MVP: confirm the pipeline runs end-to-end and produces a sane comparison |
-| E2 — full sparsity sweep, one phantom family | Strong version: quantify accuracy vs. sparsity for all three methods |
-| E3 — multiple phantom families | Strong version: check the effect generalises beyond one phantom shape |
-| E4 (optional) — uncertainty calibration | Research extension: is MC-dropout/ensemble spread predictive of true error? |
+| Experiment | Purpose | Status |
+|---|---|---|
+| E1 — single phantom family, 2 sparsity levels | MVP: confirm the pipeline runs end-to-end and produces a sane comparison | **DONE** — see `report/mvp_results.txt` |
+| E2 — full sparsity sweep, one phantom family | Strong version: quantify accuracy vs. sparsity for all three methods | Not started (needs Tikhonov first) |
+| E3 — multiple phantom families | Strong version: check the effect generalises beyond one phantom shape | Not started |
+| E4 (optional) — uncertainty calibration | Research extension: is MC-dropout/ensemble spread predictive of true error? | Not started |
 
 ## 7. Evaluation
 
-- **Metrics:** PSNR, SSIM against ground-truth phantom, computed via `scikit-image`'s
+- **Metrics (implemented):** PSNR, SSIM against ground-truth phantom, computed via `scikit-image`'s
   `peak_signal_noise_ratio`/`structural_similarity` rather than hand-rolled implementations —
   reduces bug risk in evaluation code, which must be trustworthy for the comparison to mean
   anything.
-- **Baselines:** time-reversal reconstruction and Tikhonov inversion (both classical, both
-  required — the learned model must be shown to beat both, not a strawman).
-- **Ablation (if E3/E4 pursued):** phantom-family generalisation; sparsity-level sensitivity.
-- **Robustness/error analysis:** qualitative artefact inspection at each sparsity level, not just
-  aggregate metrics — where does the learned model fail, and does it fail gracefully or produce
-  confident-looking artefacts?
-- **Reproducibility:** fixed random seeds, documented forward-model parameters (sound speed, grid
-  resolution, sensor geometry), pinned dependency versions once an environment is set up.
+- **Baselines:** time-reversal reconstruction (**implemented**) and Tikhonov inversion (**not
+  implemented** — strong-version scope). The MVP therefore compares the learned model against one
+  classical baseline, not two, honestly reflected in `report/mvp_results.txt`.
+- **Ablation (if E3/E4 pursued):** phantom-family generalisation; sparsity-level sensitivity. Not
+  started.
+- **Robustness/error analysis (done for the MVP):** the PSNR/SSIM disagreement was investigated
+  and diagnosed to a root cause (background "haze" in the learned model's output) rather than left
+  unexplained — see `report/mvp_results.txt` and `report/mvp_ssim_diagnosis.png`.
+- **Reproducibility (verified):** fixed random seeds throughout; re-running `scripts/evaluate_mvp.py`
+  reproduces identical numbers (checked directly). Dependency versions pinned in `requirements.txt`.
 
-## 8. Expected outputs (once implemented — currently none exist)
+## 8. Expected outputs
 
-- Working `src/` implementation (forward model wrapper, baselines, U-Net, training/eval loops).
-- Figures: reconstruction comparisons per method per sparsity level; PSNR/SSIM-vs-sparsity curves.
-- A short technical report in `report/` (problem, method, results, limitations).
-- (Optional) uncertainty-calibration figure if E4 is pursued.
+- Working `src/` implementation (forward model wrapper, baseline, U-Net, training/eval loops) —
+  **DONE**.
+- Figures: reconstruction comparisons per method per sparsity level — **DONE**
+  (`report/mvp_comparison.png`). PSNR/SSIM-vs-sparsity curves across a full sweep — **not done**
+  (needs E2, strong-version scope; the MVP only has the 2 discrete sparsity settings, not a swept
+  curve).
+- A short technical report in `report/` — **DONE** (`report/MVP_Final_Report.md`/`.pdf`).
+- (Optional) uncertainty-calibration figure if E4 is pursued — **not done**.
 
-**"Expected output" is a plan, not a result.** No figure or number currently exists in this
-repository.
+**MVP outputs now exist and are real** (`report/mvp_results.txt`, `report/mvp_comparison.png`,
+`report/mvp_ssim_diagnosis.png`). Strong-version outputs (sparsity-sweep curves, multi-phantom
+generalisation, uncertainty calibration) remain plans, not results, and are labelled as such above.
 
 ## 9. Extension points (technically plausible future directions only)
 
@@ -173,6 +192,12 @@ repository.
   the small 2D MVP grids, where this is not expected to be a bottleneck.
 - **No real-hardware validation:** this project is simulation-only; this must be disclosed plainly
   in any application material or report that references it, never implied otherwise.
+- **Confirmed limitation (not hypothetical — found during MVP evaluation): background haze.** The
+  MSE-trained U-Net introduces a small, systematic low-level background bias (corner-region mean
+  ≈0.01 vs. ground truth's exact 0), which is why it loses on whole-image SSIM despite winning
+  decisively on PSNR and visual quality. Diagnosed via region-masked SSIM analysis
+  (`report/mvp_results.txt`), not hidden. A background/sparsity-promoting loss term is a plausible
+  fix, not implemented in the MVP.
 - **Scope risk:** the MVP/strong/extension split in the strategy document exists specifically to
   prevent this becoming an open-ended project; if the MVP (E1) takes materially longer than a few
   days, that is a signal to stop and document the blocker rather than keep expanding scope.
