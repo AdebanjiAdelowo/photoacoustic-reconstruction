@@ -6,9 +6,12 @@ numpy
 scipy
 matplotlib
 
-# Forward acoustic-wave simulation — pick one, do not implement FDTD from scratch:
-jwave          # JAX-based; preferred if JAX/GPU setup is already available
-# k-wave-python  # alternative, MATLAB-k-Wave-derived; use if jwave setup proves difficult
+# Forward acoustic-wave simulation — verified choice, do not implement FDTD from scratch:
+jwave          # JAX-based, pure Python, no external binary. Verified (Sep 2026) to have documented
+               # support for photoacoustic initial-value-problem simulation + time-reversal
+               # reconstruction in homogeneous media — see ARCHITECTURE.md Section 5.
+# k-wave-python  # fallback only: real, pip-installable without MATLAB, but downloads compiled
+               # C++/CUDA binaries on first run. Use only if jwave setup is genuinely blocked.
 
 torch          # U-Net reconstruction model
 scikit-image   # SSIM/PSNR metrics

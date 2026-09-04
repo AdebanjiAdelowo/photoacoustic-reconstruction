@@ -6,10 +6,11 @@ implemented or run yet. Nothing here should be cited as completed work.
 
 ## What this project is
 
-A comparative study of classical model-based reconstruction (filtered back-projection, Tikhonov
+A comparative study of classical model-based reconstruction (time-reversal, Tikhonov
 regularisation) against a learned reconstruction network for photoacoustic (optoacoustic)
 tomography, simulated entirely on synthetic phantoms under a sparse-view sensor array. See
-[`ARCHITECTURE.md`](ARCHITECTURE.md) for the full technical plan.
+[`ARCHITECTURE.md`](ARCHITECTURE.md) for the technical plan and [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
+for the exact, dependency-ordered build sequence.
 
 ## Why this project
 
@@ -20,12 +21,12 @@ imaging position (optoacoustic reconstruction is literally that group's stated p
 evidence for Heckel's data-centric image-reconstruction lab, and Moderate evidence for Quaini
 (PDE-governed simulation) and the Helmholtz/IBMI data-science position.
 
-## Planned scope (see ARCHITECTURE.md for full detail)
+## Planned scope (see ARCHITECTURE.md and IMPLEMENTATION_PLAN.md for full detail)
 
-- **MVP:** forward model (via `j-Wave` or `k-wave-python`) + filtered back-projection baseline + one
-  U-Net refinement model, one phantom family, two sparsity levels.
-- **Strong version:** add Tikhonov baseline, full sparsity sweep, multiple phantom families,
-  artefact analysis, written report.
+- **MVP:** forward model (`j-Wave`, verified fit — see ARCHITECTURE.md §5) + time-reversal baseline
+  + one U-Net refinement model, one phantom family, two sparsity levels.
+- **Strong version:** add Tikhonov baseline (via gradient descent through the differentiable forward
+  model), full sparsity sweep, multiple phantom families, artefact analysis, written report.
 - **Optional research extension:** MC-dropout/ensemble uncertainty quantification.
 
 ## Repository layout
@@ -33,7 +34,9 @@ evidence for Heckel's data-centric image-reconstruction lab, and Moderate eviden
 ```
 photoacoustic-reconstruction/
 ├── README.md            this file
-├── ARCHITECTURE.md       full technical plan (problem, formulation, methods, evaluation)
+├── ARCHITECTURE.md       technical plan (problem, formulation, methods, evaluation) — verified
+│                          library choice as of Sep 2026 architecture review
+├── IMPLEMENTATION_PLAN.md  dependency-ordered build sequence, MVP scope, ranked technical risks
 ├── requirements.txt      planned dependencies (not yet installed/pinned against a working env)
 ├── src/                  module skeletons — signatures and docstrings only, no implementation
 ├── configs/              planned experiment configuration (draft, unvalidated)

@@ -37,10 +37,16 @@ series $y_k(t) = p(\mathbf{x}_k, t)$.
 
 **Inverse problem.** Recover $p_0$ from $\{y_k(t)\}$. This is the reconstruction problem.
 
-- **Classical baseline 1 — Filtered Back-Projection (FBP):** a closed-form approximate inverse,
-  standard in photoacoustic tomography, degrades under sparse/limited-view sensing.
+- **Classical baseline 1 — time-reversal reconstruction:** the standard model-based inversion for
+  this problem class (the wave-equation analogue of filtered back-projection), implemented via
+  `j-Wave`'s own documented workflow for initial-value-problem photoacoustic reconstruction in
+  homogeneous media (verified during architecture review — see §5). Degrades under sparse/limited
+  -view sensing, which is exactly the regime this project studies.
 - **Classical baseline 2 — Tikhonov-regularised inversion:** $\hat{p}_0 = \arg\min_{p_0}
-  \|A p_0 - y\|_2^2 + \lambda \|p_0\|_2^2$, where $A$ is the (discretised) forward operator.
+  \|A p_0 - y\|_2^2 + \lambda \|p_0\|_2^2$. Because `j-Wave`'s forward simulation is differentiable
+  (JAX-based), this can be solved by gradient descent directly through the forward model, without
+  needing to assemble an explicit forward-operator matrix $A$ — a genuine technical advantage of the
+  verified library choice, discovered during this review, not part of the original plan.
 - **Learned reconstruction:** a U-Net $f_\theta$ trained to refine the FBP/Tikhonov estimate,
   $\hat{p}_0^{\text{learned}} = f_\theta(\hat{p}_0^{\text{FBP}})$, trained on paired
   (degraded-reconstruction, ground-truth-phantom) examples from simulated data.
@@ -80,11 +86,26 @@ description of what will go there.
 
 ## 5. Methods
 
-- **Forward simulation:** `j-Wave` (JAX-based, MIT-licensed) or `k-wave-python`, not a from-scratch
-  FDTD implementation — chosen deliberately to protect the timeline and to avoid re-deriving
-  well-established acoustic simulation numerics.
-- **Baselines:** FBP (closed-form) and Tikhonov-regularised inversion (iterative or closed-form
-  depending on discretisation size).
+- **Forward simulation — verified choice: `j-Wave`.** Confirmed via its GitHub repository
+  (github.com/ucl-bug/jwave), its peer-reviewed description (Stanziola et al., *j-Wave: An
+  open-source differentiable wave simulator*, SoftwareX / arXiv:2207.01499), and its own
+  documentation, which includes worked examples for exactly this project's use case: an acoustic
+  initial-value problem used as a model for photoacoustic acquisition, with an image-reconstruction
+  example via time-reversal in homogeneous media. It is pure Python/JAX (no external binary,
+  installs via `pip install jwave`), which is why it is preferred over the alternative below. A
+  public example project (github.com/grindstm/pat, "Photoacoustic tomography image reconstruction
+  using j-Wave") independently confirms the intended workflow has real prior art — referenced here
+  as feasibility evidence only, not as code this project reuses.
+  **Fallback, not primary: `k-wave-python`** — also real and pip-installable without MATLAB, but
+  downloads compiled C++/CUDA binaries on first run (a real dependency-risk difference from
+  `j-Wave`'s pure-Python install); use only if `j-Wave` setup proves genuinely blocked.
+  **API caveat:** `j-Wave` is a research library; do not trust any specific class/function name
+  used loosely elsewhere in this document as verified API — follow the current official example
+  notebook (ucl-bug.github.io/jwave) at implementation time, since research-library APIs drift
+  across versions.
+- **Baselines:** time-reversal reconstruction (via `j-Wave`'s documented approach) and
+  Tikhonov-regularised inversion (via gradient descent through `j-Wave`'s differentiable forward
+  model — see §2).
 - **Learned model:** a U-Net (2D), reusing architectural experience from `abdominal-ct-segmentation`
   (adapted from a segmentation target to a regression/reconstruction target).
 - **Optional extension:** MC-dropout or a small ensemble of U-Nets for per-pixel uncertainty maps,
@@ -103,9 +124,12 @@ description of what will go there.
 
 ## 7. Evaluation
 
-- **Metrics:** PSNR, SSIM against ground-truth phantom.
-- **Baselines:** FBP, Tikhonov (both classical, both required — the learned model must be shown to
-  beat both, not a strawman).
+- **Metrics:** PSNR, SSIM against ground-truth phantom, computed via `scikit-image`'s
+  `peak_signal_noise_ratio`/`structural_similarity` rather than hand-rolled implementations —
+  reduces bug risk in evaluation code, which must be trustworthy for the comparison to mean
+  anything.
+- **Baselines:** time-reversal reconstruction and Tikhonov inversion (both classical, both
+  required — the learned model must be shown to beat both, not a strawman).
 - **Ablation (if E3/E4 pursued):** phantom-family generalisation; sparsity-level sensitivity.
 - **Robustness/error analysis:** qualitative artefact inspection at each sparsity level, not just
   aggregate metrics — where does the learned model fail, and does it fail gracefully or produce
@@ -135,8 +159,14 @@ repository.
 
 ## 10. Limitations and risks
 
-- **Wave-solver learning curve:** `j-Wave`/`k-wave-python` still require a real setup/debugging
-  investment; mitigated by choosing an established library over a from-scratch FDTD solver.
+- **Wave-solver learning curve:** `j-Wave` still requires real setup/debugging investment despite
+  being the verified, documented-fit choice; mitigated by following its official example notebooks
+  step by step rather than assuming API details in advance (see §5's API caveat), and by the
+  existence of a public prior-art example (grindstm/pat) confirming the workflow is achievable.
+- **JAX/Apple Silicon:** the project's other laptop-based solvers (e.g. `boiling-phasefield-3d`)
+  confirm Apple Silicon works fine for CPU-only NumPy/SciPy work; `j-Wave` runs on JAX's CPU backend
+  without requiring GPU/Metal support, which is untested territory here — plan to run CPU-only for
+  the small 2D MVP grids, where this is not expected to be a bottleneck.
 - **No real-hardware validation:** this project is simulation-only; this must be disclosed plainly
   in any application material or report that references it, never implied otherwise.
 - **Scope risk:** the MVP/strong/extension split in the strategy document exists specifically to
