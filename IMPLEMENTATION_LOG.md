@@ -171,3 +171,39 @@ inspection before finalising the implementation, not by guessing.
 (originally planned as a second baseline) remains explicitly deferred past the MVP.
 
 ---
+
+## Stage 5 — Training-data pipeline — **VERIFIED**
+
+**Scope decision (documented, not silent):** rather than training two separate models (one per
+MVP sparsity setting), each generated example is randomly (but seeded/reproducibly) assigned one
+of the two sparsity settings (16 or 64 sensors), and a single U-Net is trained across both —
+recorded in `scripts/generate_training_data.py`'s own docstring, not in `ARCHITECTURE.md`, since
+it is a training-data protocol choice, not a change to the project's formulation.
+
+**Implementation:** `scripts/generate_training_data.py`. Deterministic, non-overlapping seed
+ranges per split (`train`: seeds 0–39, `val`: 10000–10007, `test`: 20000–20007) — leakage
+prevented by construction, and additionally verified programmatically (the script asserts no seed
+appears in more than one split's saved `.npz`).
+
+**Verification performed:**
+- Ran for real: 40 train + 8 val + 8 test = 56 examples generated in **12.5s** total (well within
+  the "minutes, not hours" scope-control target in `IMPLEMENTATION_PLAN.md`).
+- Confirmed sparsity settings are reasonably balanced by chance (16 vs. 64 roughly 50/50 in the
+  printed counts).
+- **Programmatic leakage check passed**: no seed shared across splits.
+- Visually inspected 4 train examples (`report/dev_dataset_samples.png`): dense (64-sensor)
+  reconstructions are visibly cleaner than sparse (16-sensor) ones, which show pronounced
+  streak/starburst artefacts around the true blob positions — confirms the dataset presents the
+  U-Net with a genuine, visually obvious task (artefact removal), not a trivial one.
+
+**Result:** `data/train.npz`, `data/val.npz`, `data/test.npz` created (not committed — gitignored
+per `IMPLEMENTATION_PLAN.md` Stage 7's "avoid committing large generated data" instruction).
+
+**Issues encountered and resolved:** first run failed with `ModuleNotFoundError: No module named
+'src'` — running a script directly (`python scripts/foo.py`) does not add the repo root to
+`sys.path` the way `pytest` does. Fixed with an explicit `sys.path.insert` based on the script's
+own file location.
+
+**Decision:** proceed to Stage 6 (learned model), training on this dataset.
+
+---
