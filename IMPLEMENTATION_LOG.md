@@ -122,3 +122,52 @@ source and sensor regions at MVP scale. All 8 tests (5 phantom + 3 forward-model
 next is the classical time-reversal reconstruction baseline).
 
 ---
+
+## Stage 4 — Classical reconstruction baseline (time-reversal) — **VERIFIED**
+
+**API investigation before implementation** (per instruction — do not trust API names from
+memory): `jwave`'s top-level namespace has no dedicated "time reversal" function. Introspected
+`jwave.geometry.Sources` directly (`inspect.getsource`) — confirmed it takes
+`(positions, signals, dt, domain)` and injects `signals[:, n]` at grid `positions` at time step
+`n`. Standard time-reversal is therefore: reverse the recorded signals in time, inject them as
+`Sources` into a second `simulate_wave_propagation` call with **zero initial pressure**, and read
+out the field at the *final* time step.
+
+**Empirical discovery during implementation:** calling `simulate_wave_propagation(..., sensors=
+None)` does **not** return only the final-time field, as first assumed — it returns a
+`FourierSeries` object whose `.on_grid` property is the **entire field trajectory**, shape
+`(Nt, grid, grid, 1)`. Corrected the implementation to explicitly index `[-1]` after discovering
+this (an `np.asarray()` call on the un-indexed object initially produced a nonsensical shape `()`,
+which surfaced the misunderstanding immediately).
+
+**Implementation:** `src/baselines.py::time_reversal_reconstruction(recording, sensor_positions,
+domain, medium, time_axis)` — note the function signature does not accept the phantom/ground truth
+at all, a structural guarantee against ground-truth leakage (verified by
+`test_no_ground_truth_leakage_by_construction`).
+
+**Verification performed:**
+- Ran on a real two-blob phantom (64×64, 32 sensors, radius 24). **Correlation with ground truth:
+  0.929.**
+- Visual inspection (`report/dev_timereversal_check.png`): both blobs recovered in approximately
+  correct position and relative brightness, with faint circular/arc streak artefacts around them.
+  This is the well-known, expected signature of time-reversal reconstruction under discrete/
+  sparse sensor sampling in the photoacoustic-tomography literature — not designed or assumed in
+  advance, and independent evidence the pipeline is physically correct rather than merely
+  numerically stable.
+- `tests/test_baselines.py` — 4 tests: no-leakage-by-construction, shape/finiteness, correlation
+  with ground truth (>0.5 threshold), and — the central research-relevant check — that a sparser
+  16-sensor array does not reconstruct *better* than a 64-sensor array (within numerical
+  tolerance). **All 4 PASS.**
+
+**Result:** the full pipeline phantom → forward simulation → sparse measurements → time-reversal
+now works end-to-end, with a real, physically-sensible reconstruction and a confirmed sparsity
+effect (the core research question the MVP exists to test). All 12 tests across all stages
+**PASS**.
+
+**Issues encountered:** the `on_grid` shape misunderstanding above — resolved by direct empirical
+inspection before finalising the implementation, not by guessing.
+
+**Decision:** proceed to Stage 5 (training-data pipeline) and Stage 6 (learned model). Tikhonov
+(originally planned as a second baseline) remains explicitly deferred past the MVP.
+
+---

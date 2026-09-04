@@ -1,29 +1,39 @@
-"""Classical reconstruction baselines: time-reversal and Tikhonov inversion.
+"""Classical reconstruction baseline: time-reversal.
 
-Both are required baselines (ARCHITECTURE.md Section 5) — the learned model must be evaluated
-against both, not a strawman. Not implemented.
+Implemented for the MVP (Stage 4). Tikhonov inversion (originally planned as a second baseline) is
+explicitly deferred past the MVP per IMPLEMENTATION_PLAN.md Stage 5b — not implemented here.
+
+Method (standard time-reversal, verified against jwave's actual API — see IMPLEMENTATION_LOG.md
+Stage 4): the recorded sensor signals are reversed in time and re-injected as sources (via
+jwave.geometry.Sources) into a second forward simulation with zero initial pressure. The resulting
+field at the *final* time step of this reversed simulation is the reconstruction estimate — this
+is the standard time-reversal convention, and was verified empirically (not assumed) that
+`simulate_wave_propagation` with `sensors=None` returns the full field at every time step (shape
+`(Nt, Nx, Ny, 1)`), from which the final step is taken.
 """
 
+import jax.numpy as jnp
+import numpy as np
+from jwave.acoustics import simulate_wave_propagation
+from jwave.geometry import Sources
 
-def time_reversal_reconstruction(sensor_data, sensor_positions, grid_shape):
-    """Time-reversal reconstruction of the initial pressure field via j-Wave's documented
-    photoacoustic-reconstruction workflow (homogeneous medium).
 
-    This is the wave-equation analogue of filtered back-projection for this problem class.
-    Planned. Not implemented — implement by following j-Wave's official example notebook for
-    initial-value-problem photoacoustic reconstruction (ARCHITECTURE.md Section 5), not by
-    guessing at API details.
+def time_reversal_reconstruction(recording: np.ndarray, sensor_positions, domain, medium, time_axis):
+    """Reconstruct an initial-pressure estimate from recorded sensor data via time-reversal.
+
+    Args:
+        recording: (Nt, n_sensors, 1) array from src.forward_model.simulate_sensor_data.
+        sensor_positions: same (x, y) tuple used to record `recording`.
+        domain, medium, time_axis: same objects used for the forward simulation that produced
+            `recording` (time-reversal re-uses the same medium/geometry, not a different one).
+
+    Returns:
+        (grid_size, grid_size) float32 reconstruction estimate.
     """
-    raise NotImplementedError("Planned — see ARCHITECTURE.md Sections 2 and 5")
-
-
-def tikhonov_reconstruction(sensor_data, forward_simulate_fn, reg_lambda: float):
-    """Tikhonov-regularised reconstruction via gradient descent through j-Wave's differentiable
-    forward simulation:
-    argmin_p0 ||forward_simulate_fn(p0) - y||_2^2 + lambda * ||p0||_2^2
-
-    Takes the forward simulation function directly (not a precomputed operator matrix) — this is
-    only possible because j-Wave is JAX-differentiable, a technical advantage discovered during
-    architecture review (ARCHITECTURE.md Section 2). Planned. Not implemented.
-    """
-    raise NotImplementedError("Planned — see ARCHITECTURE.md Section 2")
+    reversed_signals = jnp.array(recording[::-1, :, 0].T)  # (n_sensors, Nt), time-reversed
+    sources = Sources(positions=sensor_positions, signals=reversed_signals,
+                       dt=time_axis.dt, domain=domain)
+    field_over_time = simulate_wave_propagation(medium, time_axis, sources=sources)
+    grid_data = np.asarray(field_over_time.on_grid)  # (Nt, grid, grid, 1)
+    reconstruction = grid_data[-1, ..., 0]
+    return reconstruction.astype(np.float32)
