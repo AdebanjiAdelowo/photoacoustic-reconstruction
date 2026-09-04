@@ -48,3 +48,34 @@ names" caveat anticipated.
 **Decision:** environment and library choice confirmed working. Proceed to Stage 2.
 
 ---
+
+## Stage 2 — Phantom generation — **VERIFIED**
+
+**Design correction (implementation evidence, not assumed in advance):** the original plan
+(`ARCHITECTURE.md` §4) said "Shepp-Logan-style" phantoms. On implementation, this was corrected:
+Shepp-Logan is a CT X-ray-attenuation phantom (a stylised anatomical cross-section), not a
+physically appropriate model for a photoacoustic initial-pressure source (a localised optical
+absorber). Implemented `random_blob_phantom(size, seed, n_blobs)` instead — a small number of
+seeded Gaussian blobs, normalised to [0, 1]. `ARCHITECTURE.md` §4 updated to match (see diff in
+this commit).
+
+**Implementation:** `src/phantoms.py::random_blob_phantom`. Documented coordinate convention
+(numpy `'ij'` indexing, origin at `[0,0]`) and value convention (dimensionless amplitude in
+`[0,1]`, not calibrated to real units) directly in the module docstring.
+
+**Verification performed:**
+- `tests/test_phantoms.py` — 5 tests (shape/dtype, value range, reproducibility given a fixed
+  seed, distinctness across seeds, distinctness across `n_blobs`). All 5 **PASSED**.
+- Generated and visually inspected 3 sample phantoms (seeds 0, 1, 2) at 128×128 — saved to
+  `report/dev_phantom_samples.png` and viewed directly. Confirmed: plausible localised-blob
+  structures, correct value range (black background = 0, bright blobs up to 1.0), visually
+  distinct across seeds.
+
+**Result:** phantom generator is deterministic, reproducible, and produces physically sensible
+initial-pressure-style images.
+
+**Issues encountered:** none beyond the design correction above.
+
+**Decision:** proceed to Stage 3 (forward model), using this phantom generator.
+
+---

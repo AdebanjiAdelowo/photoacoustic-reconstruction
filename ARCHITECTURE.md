@@ -73,13 +73,17 @@ phantom generator ──▶ forward model (wave PDE simulation) ──▶ sensor
 
 ## 4. Data
 
-**Fully synthetic — no real acquired sensor dataset will be used or claimed.** Planned phantom
-sources:
-- Shepp-Logan-style geometric phantoms (simple, standard, easy to validate against).
+**Fully synthetic — no real acquired sensor dataset is used or claimed.** Phantom source
+(**corrected during implementation — see IMPLEMENTATION_LOG.md Stage 2**): seeded, reproducible
+random Gaussian-blob phantoms (`src/phantoms.py::random_blob_phantom`), not "Shepp-Logan-style" as
+originally planned. Reason for the correction: Shepp-Logan is a CT X-ray-attenuation phantom (a
+stylised anatomical cross-section) and is not a physically appropriate model for a photoacoustic
+initial-pressure source, which is a localised optical absorber. Randomly-placed Gaussian blobs are
+standard and honest stand-ins for such absorbers, and — unlike a single fixed reference image —
+give a real family of distinct instances for train/val/test splits.
 - Optionally, vessel-like silhouettes derived from a public 2D vessel-segmentation dataset (e.g.
-  DRIVE) used purely as binary/greyscale masks — not as photoacoustic data, since no such public
-  raw-sensor dataset was identified. This substitution will be stated explicitly in the eventual
-  README/report, never presented as real acquired photoacoustic measurements.
+  DRIVE) used purely as binary/greyscale masks — not part of the MVP, deferred as in the original
+  plan.
 
 No data has been generated yet. `data/` currently contains nothing but this architecture's
 description of what will go there.
