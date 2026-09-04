@@ -1,0 +1,27 @@
+# DRAFT / UNVALIDATED — planned MVP configuration (ARCHITECTURE.md Section 6, experiment E1).
+# Values below are starting-point plans, not tuned or validated parameters.
+
+phantom:
+  type: shepp_logan
+  size: 128
+
+forward_model:
+  sound_speed: 1500.0       # m/s, water-like medium — planned default
+  grid_spacing: 1.0e-4      # m — planned default, not yet validated against solver stability
+
+sensors:
+  array: circular
+  radius: 0.05              # m — planned default
+  counts: [16, 64]          # two sparsity levels for the MVP (E1)
+
+baselines:
+  - filtered_back_projection
+  - tikhonov
+
+learned_model:
+  architecture: unet_2d
+  epochs: 100                # placeholder — not tuned
+  batch_size: 8               # placeholder — not tuned
+
+evaluation:
+  metrics: [psnr, ssim]
