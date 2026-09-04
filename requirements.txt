@@ -1,19 +1,20 @@
-# Planned dependencies — not yet installed or version-pinned against a working environment.
-# Versions below are placeholders reflecting reasonably current releases as of the architecture
-# plan (Sep 2026); pin exact versions once a working environment is actually set up and tested.
+# Pinned to a verified working environment: conda env "photoacoustic", Python 3.11,
+# macOS/Apple Silicon, CPU-only JAX. Verified 04 Sep 2026 — jwave smoke test passed
+# (scripts/smoke_test.py). See IMPLEMENTATION_LOG.md Stage 1.
 
-numpy
-scipy
+numpy==2.4.6
+scipy==1.17.1
 matplotlib
+scikit-image==0.26.0
 
-# Forward acoustic-wave simulation — verified choice, do not implement FDTD from scratch:
-jwave          # JAX-based, pure Python, no external binary. Verified (Sep 2026) to have documented
-               # support for photoacoustic initial-value-problem simulation + time-reversal
-               # reconstruction in homogeneous media — see ARCHITECTURE.md Section 5.
-# k-wave-python  # fallback only: real, pip-installable without MATLAB, but downloads compiled
-               # C++/CUDA binaries on first run. Use only if jwave setup is genuinely blocked.
+jax==0.4.38
+jaxlib==0.4.38
+jaxdf==0.2.8
+jwave==0.2.1
 
-torch          # U-Net reconstruction model
-scikit-image   # SSIM/PSNR metrics
+torch==2.14.0
 
-pytest         # for tests/ once implementation exists
+pytest==9.1.1
+
+# k-wave-python intentionally not installed — fallback only, not needed since jwave is verified
+# working.
