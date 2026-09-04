@@ -1,33 +1,21 @@
-"""Evaluation: PSNR/SSIM against ground truth, swept over sensor count / sparsity.
+"""Evaluation: PSNR/SSIM against ground truth, via scikit-image's verified implementations.
 
-Delegates to scikit-image's metrics rather than reimplementing PSNR/SSIM from scratch — evaluation
-code must be trustworthy for the comparison to mean anything (ARCHITECTURE.md Section 7). Not
-implemented — no metric has ever been computed in this repository.
+Implemented for the MVP (Stage 7).
 """
 
+import numpy as np
+from skimage.metrics import peak_signal_noise_ratio, structural_similarity
 
-def psnr(reconstruction, ground_truth):
-    """Peak signal-to-noise ratio via skimage.metrics.peak_signal_noise_ratio.
 
-    Planned. Not implemented.
+def psnr(reconstruction: np.ndarray, ground_truth: np.ndarray) -> float:
+    """Peak signal-to-noise ratio, via skimage.metrics.peak_signal_noise_ratio.
+    data_range is fixed to 1.0, matching the [0,1] phantom/reconstruction convention documented
+    in src/phantoms.py (reconstructions are not guaranteed to stay exactly in [0,1], but the
+    convention they are compared against is).
     """
-    raise NotImplementedError("Planned — see ARCHITECTURE.md Section 7")
+    return float(peak_signal_noise_ratio(ground_truth, reconstruction, data_range=1.0))
 
 
-def ssim(reconstruction, ground_truth):
-    """Structural similarity index via skimage.metrics.structural_similarity.
-
-    Planned. Not implemented.
-    """
-    raise NotImplementedError("Planned — see ARCHITECTURE.md Section 7")
-
-
-def sparsity_sweep(methods: dict, phantom, sensor_counts: list):
-    """Run all methods across a sweep of sensor counts and collect metrics.
-
-    Planned. Not implemented — will produce the PSNR/SSIM-vs-sparsity curve described in
-    ARCHITECTURE.md Section 8 once the pipeline exists. Note: the MVP (see IMPLEMENTATION_PLAN.md)
-    only requires two sparsity levels, not a full sweep — this function's full sweep use is
-    strong-version scope (E2 in ARCHITECTURE.md Section 6), not MVP scope.
-    """
-    raise NotImplementedError("Planned — see ARCHITECTURE.md Sections 6-8")
+def ssim(reconstruction: np.ndarray, ground_truth: np.ndarray) -> float:
+    """Structural similarity index, via skimage.metrics.structural_similarity."""
+    return float(structural_similarity(ground_truth, reconstruction, data_range=1.0))
