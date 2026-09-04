@@ -2,33 +2,21 @@ MVP Evaluation Results (real, measured — see IMPLEMENTATION_LOG.md Stage 7)
 Checkpoint: epoch 56, val_loss 0.000495
 Test set size: 8
 
-sparsity  n   TR PSNR     TR SSIM     Learned PSNR  Learned SSIM
-16        4   18.966      0.7055      30.726        0.4999
-64        4   22.434      0.7345      33.083        0.5166
+sparsity  n   TR PSNR     TR SSIM     Learned PSNR  Learned SSIM  
+16        4   18.966      0.7055      30.726        0.4999        
+64        4   22.434      0.7345      33.083        0.5166        
 
---- Honest finding: PSNR and SSIM disagree on which method is better ---
+--- PSNR/SSIM disagreement, diagnosed automatically (example 0) ---
+Learned model wins decisively on PSNR at both sparsity settings, but loses on
+whole-image SSIM. Region-masked breakdown, computed fresh each run:
 
-PSNR: learned refinement wins decisively at both sparsity levels (+11.8 dB at 16 sensors,
-+10.6 dB at 64 sensors).
+  SSIM inside true structure (gt>0.05): TR=0.188  Learned=0.936
+  SSIM in background (96% of image area): TR=0.870  Learned=0.405
 
-SSIM: time-reversal wins at both sparsity levels (0.71/0.73 vs 0.50/0.52 for learned).
-
-Diagnosed (example 0, see report/mvp_ssim_diagnosis.png), not left unexplained:
-- Within the actual structure (ground truth > 0.05): learned-model SSIM = 0.936 vs
-  time-reversal SSIM = 0.188 -- the learned model is dramatically, unambiguously better where
-  the signal actually is, consistent with the qualitative comparison in mvp_comparison.png.
-- In the background (>85% of image area, ground truth approx 0): time-reversal SSIM = 0.870 vs
-  learned-model SSIM = 0.405. Cause: the U-Net (trained with plain per-pixel MSE loss) leaves a
-  faint residual "haze" across the background -- corner-region mean 0.0099 / std 0.0039, versus
-  ground truth's exact 0 and time-reversal's near-zero 0.0004 / std 0.0006. This haze is small in
-  absolute magnitude (which is why PSNR, a global per-pixel metric, barely penalises it) but
-  SSIM's local-variance sensitivity penalises it heavily, and background pixels dominate the
-  image by area, so it dominates the whole-image SSIM average.
-
-Conclusion: the learned model is genuinely and substantially better at the actual reconstruction
-task (recovering source structure, removing streak artefacts), but introduces a systematic
-low-level background bias that a pure-MSE loss does not penalise enough to suppress. This is a
-real, known failure mode of MSE-trained image-restoration networks, not a bug in the evaluation
-code (verified via the per-pixel SSIM map and the region-masked comparison above). Not fixed in
-the MVP -- a plausible future direction (not implemented) would be an additional background/
-sparsity-promoting loss term, but that is strong-version/extension scope, not MVP scope.
+Interpretation: the learned model is dramatically better where the signal
+actually is, but introduces a small residual background "haze" that SSIM's
+local-variance sensitivity penalises heavily; since background dominates image
+area, this inverts the whole-image SSIM ranking despite the large real PSNR and
+visual win. A known failure mode of MSE-trained restoration networks, not a bug
+in this evaluation (see report/mvp_ssim_diagnosis.png). Not fixed in this MVP —
+a background/sparsity-promoting loss term is a plausible future extension.
