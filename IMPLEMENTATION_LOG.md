@@ -79,3 +79,46 @@ initial-pressure-style images.
 **Decision:** proceed to Stage 3 (forward model), using this phantom generator.
 
 ---
+
+## Stage 3 — Forward acoustic model — **VERIFIED**
+
+**Implementation:** `src/forward_model.py` — `build_domain_and_medium`, `sparse_view_sensor_array`,
+`simulate_sensor_data`, built on the directly-introspected `j-Wave` API from Stage 1. Documented in
+the module docstring: grid/spacing, PSTD discretisation, CFL-derived time step, homogeneous sound
+speed, **PML absorbing boundary** (not periodic — confirmed from `jwave.geometry.Medium`'s real
+signature), p0/u0 initial-value convention, circular sensor geometry, and the verified
+`(Nt, n_sensors, 1)` output layout. Defined explicitly what "sparse-view" means in this project:
+fewer sensors on the same fixed-radius circular array (angular under-sampling), not a reduced
+radius or limited-angle arc.
+
+**Verification performed:**
+- Ran the forward model on a real phantom (from Stage 2, seed 0, 64×64 grid, 32 sensors at
+  radius 24) — recording shape `(297, 32, 1)`, finite, max |signal| ≈ 0.216.
+- **Physical plausibility check, visual:** plotted the sensor-0 pressure trace over time
+  (`report/dev_forward_model_check.png`) and inspected it directly. Result: a smooth bipolar pulse
+  (rises to a positive peak, crosses zero, dips to a negative trough, decays to zero) — this is the
+  textbook photoacoustic transient-pressure signature for a smooth absorber. This shape was not
+  designed or assumed in advance; it emerged from the physics, which is meaningful independent
+  evidence the simulation is doing something physically correct, not just numerically stable.
+- Wrote `tests/test_forward_model.py` (3 tests: shape/finiteness, non-trivial signal, near-zero
+  signal before wave arrival).
+
+**Issues encountered and resolved (real failure, documented rather than hidden):** the first test
+run of `test_signal_starts_near_zero_before_wave_arrival` **FAILED** — one sensor (index 1, at
+radius=12 on a 32×32 test grid) showed amplitude 0.036 at t=0, not near-zero. Diagnosed by printing
+sensor positions and the phantom's bright-region bounding box: that sensor position fell within the
+non-negligible Gaussian tail of the phantom itself (Gaussians have infinite support), i.e. the
+sensor was geometrically placed too close to/inside the source region for this small test's
+radius — a test-configuration issue, not a forward-model bug. Fixed by increasing the test's sensor
+radius from 12 to 15 (verified empirically this clears the phantom's tail: max t=0 amplitude dropped
+from 0.036 to 0.00039). Confirmed the MVP-scale configuration (grid 64, radius 24) does not have
+this issue, since blob placement range and sensor radius are proportionally further apart at that
+scale.
+
+**Result:** forward model verified working, physically plausible, and correctly separates
+source and sensor regions at MVP scale. All 8 tests (5 phantom + 3 forward-model) **PASS**.
+
+**Decision:** proceed to Stage 4/5 (sensor geometry is already implemented as part of this stage;
+next is the classical time-reversal reconstruction baseline).
+
+---
