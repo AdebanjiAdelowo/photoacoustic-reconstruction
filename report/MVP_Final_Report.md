@@ -73,27 +73,8 @@ Modified: `ARCHITECTURE.md` (2 corrections found during implementation), `README
 
 **MVP COMPLETE.**
 
-## Portfolio verdict
-
-**Genuinely strong evidence now exists — but it has not been added to any CV or letter, per
-instruction.** Assessment: the real, honest result (dramatic structural improvement, a diagnosed
-rather than hidden failure mode, working code with tests) is legitimate CV-worthy evidence for CBI
-and Heckel specifically (Direct/Strong AVS positions), describable accurately as e.g.
-*"implemented and evaluated a learned photoacoustic reconstruction pipeline against a time-reversal
-baseline; investigated a PSNR/SSIM metric disagreement to a diagnosed root cause."* Recommendation
-against adding it to Quaini or DSBI yet (their AVS for this project was always Moderate/Weak) or to
-the long-term Selected Projects portfolio until the strong version exists. This is a
-recommendation, not an action — no application document was changed.
-
-## Next recommended action
-
-Given the six not-yet-sent TUM/Helmholtz applications are still sitting in draft: decide whether to
-(a) add this evidence to the CBI/Heckel CVs now and send, or (b) pursue the strong version
-(Tikhonov baseline, background-haze fix) first. Leaning toward (a) — the result is real and
-honestly reportable — but that is a decision for Adebanji, not one made automatically here.
-
 ---
 
-*Prepared 4 September 2026, documenting the implementation pass that moved
-`~/Documents/GitHub/photoacoustic-reconstruction` from PLANNED to MVP COMPLETE. See
-`IMPLEMENTATION_LOG.md` in that repository for the full stage-by-stage verification record.*
+*Prepared 4 September 2026, documenting the implementation pass that moved this project from
+PLANNED to MVP COMPLETE. See `IMPLEMENTATION_LOG.md` in this repository for the full
+stage-by-stage verification record.*

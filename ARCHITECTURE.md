@@ -22,15 +22,13 @@ artefacts largely removed), with a diagnosed, honestly-reported exception on who
 **Motivation:** photoacoustic/optoacoustic tomography is a genuine PDE-governed inverse problem
 (the forward model is the acoustic wave equation); sparse/limited-view sensing is the practically
 important regime, since dense sensor coverage is expensive or physically impossible in many real
-systems. This is also the stated project of the TUM/CBI (Jüstel) posting this project is motivated
-by.
+systems.
 
 **Intended contribution/evidence:** a comparative study, not a claim of novel methodology. The
 evidence this produces is: "implemented a synthetic forward model and evaluated a learned
 reconstruction network against classical baselines under varying view-sparsity." Novelty
-classification (per the Application Project Strategist skill's novelty ladder): **new application /
-comparative study**, not a methodological contribution — do not describe it as novel research
-without new evidence to support that later.
+classification: **new application / comparative study**, not a methodological contribution — do
+not describe it as novel research without new evidence to support that later.
 
 ## 2. Mathematical / computational formulation
 
@@ -125,9 +123,8 @@ description of what will go there.
 - **Learned model:** a U-Net (2D), reusing architectural experience from `abdominal-ct-segmentation`
   (adapted from a segmentation target to a regression/reconstruction target).
 - **Optional extension:** MC-dropout or a small ensemble of U-Nets for per-pixel uncertainty maps,
-  evaluated for calibration against known reconstruction error (this is the piece with direct
-  relevance to the Helmholtz/IBMI Data Science position's interest in "uncertainty quantification,
-  robust inference").
+  evaluated for calibration against known reconstruction error (uncertainty quantification for
+  learned reconstruction is a broadly relevant open problem in inverse imaging).
 
 ## 6. Experiments
 
@@ -202,5 +199,4 @@ generalisation, uncertainty calibration) remain plans, not results, and are labe
   prevent this becoming an open-ended project; if the MVP (E1) takes materially longer than a few
   days, that is a signal to stop and document the blocker rather than keep expanding scope.
 - **Compute:** all planned experiments are laptop-scale (2D, small grids); no cluster/HPC access is
-  assumed or required, consistent with the honest "no HPC evidence" disclosure already present in
-  the Quaini application materials.
+  assumed or required, and this MVP does not claim any HPC-scale evidence.
