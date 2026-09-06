@@ -1,76 +1,194 @@
-# Photoacoustic Reconstruction — Model-Based vs. Learned Inversion Under Sparse-View Sensing
+# Photoacoustic Reconstruction: Model-Based vs. Learned Inversion Under Sparse-View Sensing
 
-**Status: MVP COMPLETE.** The full pipeline (phantom → forward simulation → sparse measurements →
-time-reversal → learned reconstruction → PSNR/SSIM evaluation) is implemented and verified with
-real execution — see [`IMPLEMENTATION_LOG.md`](IMPLEMENTATION_LOG.md) for the stage-by-stage
-verification record and [`report/mvp_results.txt`](report/mvp_results.txt) for real, measured
-results. **Not started:** Tikhonov baseline, uncertainty quantification, multiple phantom families,
-full sparsity sweep — all explicitly out of MVP scope, deferred to a future "strong version" pass.
+A comparative study of classical time-reversal reconstruction against a learned U-Net refinement
+for photoacoustic (optoacoustic) tomography, evaluated on synthetic phantom data under sparse-view
+sensor arrays.
 
-## What this project is
+## Overview
 
-A comparative study of classical model-based reconstruction (time-reversal; Tikhonov regularisation
-planned but not yet implemented) against a learned reconstruction network for photoacoustic
-(optoacoustic) tomography, simulated on synthetic phantoms under a sparse-view sensor array. See
-[`ARCHITECTURE.md`](ARCHITECTURE.md) for the technical plan and [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)
-for the build sequence that was actually followed.
+Photoacoustic tomography reconstructs an initial pressure distribution (an optical absorber map)
+from acoustic pressure signals recorded by a sensor array. Under sparse-view sensing, where only a
+few sensors are available, classical model-based reconstruction produces pronounced streak
+artefacts. This project implements a full synthetic pipeline (phantom generation, forward wave
+simulation, sparse sensing, reconstruction, evaluation) and compares a time-reversal baseline
+against a U-Net that refines the time-reversal estimate, across two sensor-array densities.
 
-## Real MVP result (measured, not projected)
+## Problem Formulation
 
-| sparsity | TR PSNR | TR SSIM | Learned PSNR | Learned SSIM |
+The forward problem: an initial pressure distribution $p_0(\mathbf{x})$ propagates as an acoustic
+wave governed by the constant-speed-of-sound wave equation
+
+$$\frac{1}{c^2}\frac{\partial^2 p(\mathbf{x},t)}{\partial t^2} - \nabla^2 p(\mathbf{x},t) = 0,
+\qquad p(\mathbf{x},0) = p_0(\mathbf{x}), \qquad \partial_t p(\mathbf{x},0) = 0,$$
+
+recorded at sensor locations $\{\mathbf{x}_k\}_{k=1}^{K}$ as time series $y_k(t) = p(\mathbf{x}_k, t)$.
+The inverse problem is to recover $p_0$ from $\{y_k(t)\}$.
+
+Two reconstruction approaches are compared:
+
+- **Time-reversal** (implemented): the standard model-based inversion for this problem class, the
+  wave-equation analogue of filtered back-projection. Degrades under sparse/limited-view sensing.
+- **Learned reconstruction** (implemented): a U-Net $f_\theta$ trained to refine the time-reversal
+  estimate, $\hat{p}_0^{\text{learned}} = f_\theta(\hat{p}_0^{\text{TR}})$, trained on paired
+  (time-reversal estimate, ground-truth phantom) examples.
+
+A Tikhonov-regularised least-squares baseline ($\hat{p}_0 = \arg\min_{p_0} \|A p_0 - y\|_2^2 +
+\lambda \|p_0\|_2^2$) is formulated in the codebase's design notes but not implemented; see
+Limitations.
+
+## Methodology
+
+- **Forward simulation**: [j-Wave](https://github.com/ucl-bug/jwave), a JAX-based differentiable
+  acoustic wave simulator (Stanziola et al., *j-Wave: An open-source differentiable wave
+  simulator*, SoftwareX, arXiv:2207.01499), run on CPU with a PML absorbing boundary and a
+  CFL-derived time step.
+- **Phantoms** (`src/phantoms.py`): reproducible, seeded random Gaussian-blob absorbers. A
+  Shepp-Logan-style phantom was considered but not used, since it models CT X-ray attenuation
+  rather than a localised optical absorber; randomly placed Gaussian blobs give a physically
+  reasonable family of distinct phantom instances for train/val/test splits.
+- **Sensor arrays**: circular arrays of 16 or 64 sensors.
+- **Classical baseline** (`src/baselines.py`): time-reversal reconstruction via j-Wave's
+  photoacoustic simulation workflow.
+- **Learned model** (`src/reconstruction_net.py`): a compact 3-level U-Net (base width 16, about
+  482K parameters) mapping the time-reversal estimate to a refined reconstruction, trained by MSE
+  regression.
+
+## Experimental Setup
+
+**Dataset** (`scripts/generate_training_data.py`): 56 synthetic examples (40 train, 8 validation,
+8 test), generated with deterministic, non-overlapping seed ranges per split. Each example is
+randomly assigned one of the two sensor counts (16 or 64), and a single U-Net is trained across
+both settings rather than one model per sparsity level.
+
+**Training** (`scripts/train.py`): Adam optimiser, MSE loss, 60 epochs, batch size 8, best-validation
+checkpointing, fixed seed. Training loss decreased from 0.0281 to 0.0002 and validation loss from
+0.0118 to 0.0005, both monotonically, in about 5 seconds on an Apple Silicon MPS backend.
+
+**Evaluation** (`scripts/evaluate_mvp.py`): PSNR and SSIM between each method's reconstruction and
+ground truth on the held-out test split, computed separately for each sensor count (4 test
+examples per setting).
+
+## Results
+
+Test set (n = 4 per sparsity setting):
+
+| Sensors | TR PSNR | TR SSIM | Learned PSNR | Learned SSIM |
 |---|---|---|---|---|
-| 16 sensors | 18.97 dB | 0.706 | **30.73 dB** | 0.500 |
-| 64 sensors | 22.43 dB | 0.735 | **33.08 dB** | 0.517 |
+| 16 | 18.97 dB | 0.706 | 30.73 dB | 0.500 |
+| 64 | 22.43 dB | 0.735 | 33.08 dB | 0.517 |
 
-The learned model wins decisively on PSNR and, more importantly, visually (see
-[`report/mvp_comparison.png`](report/mvp_comparison.png) — streak artefacts are almost entirely
-removed). It loses on whole-image SSIM, which was investigated rather than hidden: within the true
-structure the learned model's SSIM is 0.936 vs. 0.188 for time-reversal (dramatically better), but
-it introduces a small, diagnosed background "haze" that SSIM's local-variance sensitivity penalises
-heavily since background dominates the image by area. Full diagnosis in
-[`report/mvp_results.txt`](report/mvp_results.txt) and
-[`report/mvp_ssim_diagnosis.png`](report/mvp_ssim_diagnosis.png).
+The learned model improves PSNR by 11.8 dB (16 sensors) and 10.6 dB (64 sensors) over time-reversal,
+and visibly removes streak artefacts (`report/mvp_comparison.png`). It scores lower on whole-image
+SSIM than time-reversal at both sparsity settings.
 
-## Why this project
+A region-masked breakdown (`report/mvp_ssim_diagnosis.png`) explains the SSIM discrepancy: within
+the true phantom structure, the learned model's SSIM is far higher than time-reversal's (0.936 vs.
+0.188), but in the background, which covers about 96% of the image area, time-reversal scores
+higher (0.870 vs. 0.405). The learned model introduces a small residual background haze that SSIM's
+local-variance sensitivity penalises heavily, and since the background dominates image area, this
+inverts the whole-image SSIM ranking despite the large PSNR and visual improvement. This is a known
+failure mode of MSE-trained restoration networks rather than an artefact of the evaluation.
 
-Originated from `01_Applications/PhD/Germany/TUM/00_Strategy/TUM_2026_Project_Portfolio_Strategy.md`
-(Section 7, Project ①) as the single highest cross-application-value project identified across
-seven TUM/Helmholtz PhD applications — it is Direct evidence for the CBI/Jüstel computational-
-imaging position (optoacoustic reconstruction is literally that group's stated project), Strong
-evidence for Heckel's data-centric image-reconstruction lab, and Moderate evidence for Quaini
-(PDE-governed simulation) and the Helmholtz/IBMI data-science position. **Not yet added to any
-application CV** — that decision is deferred to the portfolio-verdict step, per instruction.
+## Key Findings
 
-## Environment
+- The learned refinement network substantially outperforms time-reversal on PSNR and visual
+  artefact removal at both tested sparsity levels.
+- Whole-image SSIM favours time-reversal, but this is driven entirely by a diffuse background haze
+  in the learned reconstruction; SSIM restricted to the true phantom structure strongly favours the
+  learned model.
+- The dataset (56 examples total, 8 held out for testing) is small; the results characterise this
+  specific synthetic setup and should not be read as general accuracy figures for photoacoustic
+  reconstruction.
 
-Conda env `photoacoustic`, Python 3.11. Verified working dependency versions pinned in
-`requirements.txt`. To reproduce: `conda create -n photoacoustic python=3.11 && conda activate
-photoacoustic && pip install -r requirements.txt`.
-
-## Repository layout
+## Repository Structure
 
 ```
 photoacoustic-reconstruction/
-├── README.md               this file
-├── ARCHITECTURE.md          technical plan — updated with corrections found during implementation
-├── IMPLEMENTATION_PLAN.md   the dependency-ordered build sequence that was followed
-├── IMPLEMENTATION_LOG.md    stage-by-stage verification record: what was run, what passed/failed,
-│                             how failures were diagnosed and fixed, real measured results
-├── requirements.txt         pinned, verified working dependency versions
-├── src/                     phantoms.py, forward_model.py, baselines.py, reconstruction_net.py,
-│                             evaluate.py — all implemented, not skeletons
-├── scripts/                 smoke_test.py, generate_training_data.py, train.py, evaluate_mvp.py
-├── configs/                 mvp.yaml
-├── data/                    generated train/val/test .npz splits — gitignored, not committed
-├── experiments/              trained checkpoint — gitignored, not committed
-├── tests/                   15 tests, all passing
-└── report/                  real figures and results: dev-stage verification plots +
-                              mvp_comparison.png, mvp_ssim_diagnosis.png, mvp_results.txt
+├── README.md
+├── ARCHITECTURE.md          mathematical formulation and design notes
+├── requirements.txt
+├── src/
+│   ├── phantoms.py          synthetic Gaussian-blob phantom generation
+│   ├── forward_model.py     j-Wave acoustic forward simulation and sparse sensing
+│   ├── baselines.py         time-reversal reconstruction
+│   ├── reconstruction_net.py  U-Net refinement model
+│   └── evaluate.py          PSNR/SSIM evaluation
+├── scripts/
+│   ├── smoke_test.py            forward-model sanity check
+│   ├── generate_training_data.py  builds train/val/test splits
+│   ├── train.py                  trains the U-Net
+│   └── evaluate_mvp.py           runs the PSNR/SSIM comparison
+├── configs/                  mvp.yaml
+├── data/                     generated train/val/test splits (not committed)
+├── experiments/              trained checkpoint (not committed)
+├── tests/                    15 tests covering phantoms, forward model, baselines, and evaluation
+└── report/                   evaluation figures and results
 ```
 
-## What's next
+## Installation
 
-Strong version (Tikhonov baseline, full sparsity sweep, multiple phantom families) and the
-background-haze failure mode are both natural next steps — neither was started in this pass, per
-its explicit stop condition. See `IMPLEMENTATION_LOG.md`'s final entry for the full portfolio
-verdict and recommended next action.
+Requires Python 3.11. Dependencies are pinned in `requirements.txt`: `numpy`, `scipy`, `matplotlib`,
+`scikit-image`, `jax`/`jaxlib`/`jaxdf`, `jwave`, `torch`, `pytest`. The forward simulation runs on
+CPU; no GPU is required.
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+```bash
+# sanity-check the forward simulation
+python scripts/smoke_test.py
+
+# generate the train/val/test splits
+python scripts/generate_training_data.py
+
+# train the U-Net refinement model
+python scripts/train.py
+
+# run the PSNR/SSIM comparison on the test split
+python scripts/evaluate_mvp.py
+```
+
+## Reproducing the Experiments
+
+Run the four scripts above in order. `evaluate_mvp.py` writes `report/mvp_results.txt`,
+`report/mvp_comparison.png`, and `report/mvp_ssim_diagnosis.png`.
+
+## Tests
+
+```bash
+pytest
+```
+
+15 tests cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
+(no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
+degradation under sparser arrays), and the evaluation metrics (PSNR/SSIM sanity checks).
+
+## Limitations
+
+- The Tikhonov-regularised baseline is not implemented; only time-reversal is compared against the
+  learned model. Because the forward simulation is differentiable (JAX-based), this baseline could
+  be solved by gradient descent through the forward model without assembling an explicit forward
+  operator.
+- The dataset uses a single phantom family (random Gaussian blobs) and only two sensor counts (16
+  and 64); results have not been checked across other phantom types or a finer sparsity sweep.
+- The test split contains 8 examples (4 per sparsity setting), which is small for stable PSNR/SSIM
+  estimates.
+- The learned model introduces a diffuse background artefact that lowers whole-image SSIM despite
+  improving both PSNR and structure-region SSIM; this is not corrected in the current model.
+- All data is synthetic; no real acquired photoacoustic sensor data is used.
+- All experiments were run on laptop-scale CPU/MPS hardware.
+
+## Possible Extensions
+
+Possible extensions include a Tikhonov-regularised baseline using the differentiable forward model,
+a finer sparsity sweep, additional phantom families (e.g. vessel-like silhouettes), a background- or
+sparsity-promoting loss term to address the residual haze artefact, and uncertainty quantification.
+
+## References
+
+Stanziola, A., Arridge, S. R., Cox, B. T., & Treeby, B. E. (2023). *j-Wave: An open-source
+differentiable wave simulator.* SoftwareX. arXiv:2207.01499.
