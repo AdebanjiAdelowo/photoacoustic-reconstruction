@@ -100,6 +100,42 @@ failure mode of MSE-trained restoration networks rather than an artefact of the 
   specific synthetic setup and should not be read as general accuracy figures for photoacoustic
   reconstruction.
 
+## Noise Robustness
+
+The headline results above use a noiseless forward simulation (`src/forward_model.py` has no
+sensor-noise model), and the U-Net was trained only on noiseless time-reversal reconstructions.
+Since real photoacoustic acquisitions are noise-dominated, `scripts/evaluate_noise_sensitivity.py`
+adds i.i.d. Gaussian noise to the simulated sensor recordings as an evaluation-time-only option
+(the noiseless path used everywhere else is unchanged) and re-runs the **existing, not retrained**
+checkpoint at four positive noise levels plus the noiseless baseline, on the full 8-example test
+split (16- and 64-sensor settings). Noise standard deviation is expressed relative to each
+example's own clean-recording RMS amplitude, with an equivalent SNR shown for reference:
+
+| Noise level | Relative std | SNR (dB) | TR PSNR | TR SSIM | U-Net PSNR | U-Net SSIM |
+|---|---|---|---|---|---|---|
+| noiseless | 0.00 | inf | 20.70 dB | 0.720 | 31.90 dB | 0.508 |
+| low | 0.01 | 40.0 | 20.70 dB | 0.720 | 31.90 dB | 0.509 |
+| moderate | 0.05 | 26.0 | 20.70 dB | 0.720 | 31.87 dB | 0.507 |
+| high | 0.20 | 14.0 | 20.70 dB | 0.717 | 31.42 dB | 0.484 |
+| severe | 0.50 | 6.0 | 20.69 dB | 0.700 | 29.72 dB | 0.432 |
+
+(overall numbers pooled across both sparsity settings; the per-sparsity breakdown, which matches
+`report/mvp_results.txt` exactly at the noiseless level, is in `report/noise_sensitivity_results.txt`
+and `report/noise_sensitivity_results.json`.)
+
+**Finding**: over this range, the U-Net's PSNR/SSIM gains over time-reversal do not vanish or
+reverse, even at a fairly aggressive 6 dB sensor SNR (severe: U-Net PSNR 29.72 dB vs. TR 20.69 dB).
+Degradation is real but gradual, and the time-reversal baseline itself is almost unaffected by this
+noise model. This is expected, not a sign the noise had no effect: time-reversal reconstruction
+sums time-reversed signals over hundreds of time samples and multiple sensors, which averages down
+i.i.d. per-sample sensor noise substantially before it reaches the image domain the U-Net operates
+on. This is a genuinely useful result, not a validation gap dismissed: it shows the reported gains
+are not fragile to *this* noise model at *these* levels, but it does **not** establish robustness to
+noise levels beyond "severe" here, to correlated/non-Gaussian sensor noise, or to noise realistic for
+a specific real acquisition system, since the U-Net was trained exclusively on noiseless data. A
+noise-aware training regime and a systematic characterisation of real photoacoustic sensor noise
+statistics are out of scope for this check; see Limitations and Possible Extensions.
+
 ## Repository Structure
 
 ```
@@ -117,7 +153,8 @@ photoacoustic-reconstruction/
 │   ├── smoke_test.py            forward-model sanity check
 │   ├── generate_training_data.py  builds train/val/test splits
 │   ├── train.py                  trains the U-Net
-│   └── evaluate_mvp.py           runs the PSNR/SSIM comparison
+│   ├── evaluate_mvp.py           runs the PSNR/SSIM comparison
+│   └── evaluate_noise_sensitivity.py  noise-robustness check on the existing checkpoint
 ├── configs/                  mvp.yaml
 ├── data/                     generated train/val/test splits (not committed)
 ├── experiments/              trained checkpoint (not committed)
@@ -149,12 +186,18 @@ python scripts/train.py
 
 # run the PSNR/SSIM comparison on the test split
 python scripts/evaluate_mvp.py
+
+# noise-robustness check: re-evaluate the existing checkpoint under added sensor noise
+python scripts/evaluate_noise_sensitivity.py
 ```
 
 ## Reproducing the Experiments
 
-Run the four scripts above in order. `evaluate_mvp.py` writes `report/mvp_results.txt`,
-`report/mvp_comparison.png`, and `report/mvp_ssim_diagnosis.png`.
+Run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_results.txt`,
+`report/mvp_comparison.png`, and `report/mvp_ssim_diagnosis.png`. `evaluate_noise_sensitivity.py`
+(see Noise Robustness) requires `experiments/unet_checkpoint.pt` to already exist (from
+`train.py`) but does not retrain it; it writes `report/noise_sensitivity_results.txt` and
+`report/noise_sensitivity_results.json`.
 
 ## Tests
 
@@ -181,12 +224,20 @@ degradation under sparser arrays), and the evaluation metrics (PSNR/SSIM sanity 
   improving both PSNR and structure-region SSIM; this is not corrected in the current model.
 - All data is synthetic; no real acquired photoacoustic sensor data is used.
 - All experiments were run on laptop-scale CPU/MPS hardware.
+- The main forward simulation and all headline results (above) use a noiseless sensor model, and
+  the U-Net was trained only on noiseless data. The Noise Robustness section reports a scoped,
+  evaluation-time-only sensitivity check (i.i.d. Gaussian noise, existing checkpoint, no
+  retraining) rather than a full noise-aware pipeline; it does not characterise the U-Net's
+  behaviour under noise levels beyond those tested, correlated or non-Gaussian noise, or noise
+  statistics matched to a specific real acquisition system.
 
 ## Possible Extensions
 
 Possible extensions include a Tikhonov-regularised baseline using the differentiable forward model,
 a finer sparsity sweep, additional phantom families (e.g. vessel-like silhouettes), a background- or
-sparsity-promoting loss term to address the residual haze artefact, and uncertainty quantification.
+sparsity-promoting loss term to address the residual haze artefact, uncertainty quantification, and
+training the U-Net on noisy (not just clean) time-reversal reconstructions so it can be evaluated
+fairly, rather than only stress-tested, under realistic sensor noise.
 
 ## References
 

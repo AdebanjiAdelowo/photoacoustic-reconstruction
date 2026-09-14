@@ -1,0 +1,139 @@
+{
+  "checkpoint_epoch": 56,
+  "checkpoint_val_loss": 0.0004946835106238723,
+  "test_set_size": 8,
+  "test_set_note": "full existing test split (data/test.npz), no retraining, no subsampling",
+  "noise_model": "i.i.d. Gaussian noise added to the simulated sensor recording, sigma = relative_std * RMS(clean recording), evaluation-time only",
+  "levels": [
+    {
+      "label": "noiseless",
+      "relative_std": 0.0,
+      "snr_db": null,
+      "n": 8,
+      "tr_psnr": 20.700356260283478,
+      "tr_ssim": 0.7199636355071464,
+      "unet_psnr": 31.90447432546259,
+      "unet_ssim": 0.5082329265265035,
+      "by_sparsity": {
+        "16": {
+          "n": 4,
+          "tr_psnr": 18.96636414725202,
+          "tr_ssim": 0.7054603921534051,
+          "unet_psnr": 30.726082683400826,
+          "unet_ssim": 0.4998515237226991
+        },
+        "64": {
+          "n": 4,
+          "tr_psnr": 22.434348373314933,
+          "tr_ssim": 0.7344668788608878,
+          "unet_psnr": 33.08286596752436,
+          "unet_ssim": 0.5166143293303079
+        }
+      }
+    },
+    {
+      "label": "low",
+      "relative_std": 0.01,
+      "snr_db": 40.0,
+      "n": 8,
+      "tr_psnr": 20.70029664210141,
+      "tr_ssim": 0.7200123000348533,
+      "unet_psnr": 31.904380963438676,
+      "unet_ssim": 0.5086093327393252,
+      "by_sparsity": {
+        "16": {
+          "n": 4,
+          "tr_psnr": 18.96642434328164,
+          "tr_ssim": 0.7054952354997717,
+          "unet_psnr": 30.725964178917803,
+          "unet_ssim": 0.5006103012411336
+        },
+        "64": {
+          "n": 4,
+          "tr_psnr": 22.43416894092118,
+          "tr_ssim": 0.7345293645699349,
+          "unet_psnr": 33.082797747959546,
+          "unet_ssim": 0.5166083642375167
+        }
+      }
+    },
+    {
+      "label": "moderate",
+      "relative_std": 0.05,
+      "snr_db": 26.020599913279625,
+      "n": 8,
+      "tr_psnr": 20.700064779808955,
+      "tr_ssim": 0.719787235410322,
+      "unet_psnr": 31.872734988225496,
+      "unet_ssim": 0.5069451721321303,
+      "by_sparsity": {
+        "16": {
+          "n": 4,
+          "tr_psnr": 18.96669235079221,
+          "tr_ssim": 0.7051318007952465,
+          "unet_psnr": 30.65718674208777,
+          "unet_ssim": 0.4992037495476271
+        },
+        "64": {
+          "n": 4,
+          "tr_psnr": 22.433437208825698,
+          "tr_ssim": 0.7344426700253974,
+          "unet_psnr": 33.08828323436323,
+          "unet_ssim": 0.5146865947166336
+        }
+      }
+    },
+    {
+      "label": "high",
+      "relative_std": 0.2,
+      "snr_db": 13.979400086720377,
+      "n": 8,
+      "tr_psnr": 20.697341335181456,
+      "tr_ssim": 0.7170496373944178,
+      "unet_psnr": 31.419426412066287,
+      "unet_ssim": 0.4836810731561944,
+      "by_sparsity": {
+        "16": {
+          "n": 4,
+          "tr_psnr": 18.963350271538502,
+          "tr_ssim": 0.7039512977648625,
+          "unet_psnr": 30.231535584695095,
+          "unet_ssim": 0.4969425490690671
+        },
+        "64": {
+          "n": 4,
+          "tr_psnr": 22.431332398824416,
+          "tr_ssim": 0.7301479770239732,
+          "unet_psnr": 32.60731723943748,
+          "unet_ssim": 0.4704195972433216
+        }
+      }
+    },
+    {
+      "label": "severe",
+      "relative_std": 0.5,
+      "snr_db": 6.020599913279624,
+      "n": 8,
+      "tr_psnr": 20.687202035593153,
+      "tr_ssim": 0.6995610871062914,
+      "unet_psnr": 29.719031630711903,
+      "unet_ssim": 0.4315967253269183,
+      "by_sparsity": {
+        "16": {
+          "n": 4,
+          "tr_psnr": 18.961707512887887,
+          "tr_ssim": 0.6956933461290532,
+          "unet_psnr": 28.275582589475718,
+          "unet_ssim": 0.46683752892502584
+        },
+        "64": {
+          "n": 4,
+          "tr_psnr": 22.41269655829842,
+          "tr_ssim": 0.7034288280835297,
+          "unet_psnr": 31.162480671948092,
+          "unet_ssim": 0.3963559217288108
+        }
+      }
+    }
+  ]
+}

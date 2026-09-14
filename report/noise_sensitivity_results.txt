@@ -1,0 +1,25 @@
+Noise-robustness sensitivity analysis (real, measured -- see scripts/evaluate_noise_sensitivity.py)
+Checkpoint: epoch 56, val_loss 0.000495 (existing checkpoint, not retrained)
+Test set: 8 examples (full existing test split, data/test.npz)
+Noise model: i.i.d. Gaussian noise added to the simulated sensor recording only (forward physics unchanged); sigma = relative_std * RMS(clean recording)
+
+Overall (both sparsity settings pooled):
+noise       rel.std   SNR(dB)   n   TR PSNR   TR SSIM   UNet PSNR  UNet SSIM  
+noiseless   0.00      inf       8   20.700    0.7200    31.904     0.5082     
+low         0.01      40.0      8   20.700    0.7200    31.904     0.5086     
+moderate    0.05      26.0      8   20.700    0.7198    31.873     0.5069     
+high        0.20      14.0      8   20.697    0.7170    31.419     0.4837     
+severe      0.50      6.0       8   20.687    0.6996    29.719     0.4316     
+
+By sparsity setting:
+noise       sensors  n   TR PSNR   TR SSIM   UNet PSNR  UNet SSIM  
+noiseless   16       4   18.966    0.7055    30.726     0.4999     
+noiseless   64       4   22.434    0.7345    33.083     0.5166     
+low         16       4   18.966    0.7055    30.726     0.5006     
+low         64       4   22.434    0.7345    33.083     0.5166     
+moderate    16       4   18.967    0.7051    30.657     0.4992     
+moderate    64       4   22.433    0.7344    33.088     0.5147     
+high        16       4   18.963    0.7040    30.232     0.4969     
+high        64       4   22.431    0.7301    32.607     0.4704     
+severe      16       4   18.962    0.6957    28.276     0.4668     
+severe      64       4   22.413    0.7034    31.162     0.3964     
