@@ -239,6 +239,14 @@ sparsity-promoting loss term to address the residual haze artefact, uncertainty 
 training the U-Net on noisy (not just clean) time-reversal reconstructions so it can be evaluated
 fairly, rather than only stress-tested, under realistic sensor noise.
 
+## Remaining Work
+
+The noise-robustness evaluation above (five noise levels, existing checkpoint) is complete. The
+next planned extension is diffusion posterior sampling (Chung et al. 2023) as a genuinely
+different reconstruction method targeting the diagnosed MSE-regression haze failure mode; not yet
+started. Portfolio-wide project status is tracked centrally in the author's Selected Projects
+documentation; this project's status there is DEFERRED RESEARCH.
+
 ## References
 
 Stanziola, A., Arridge, S. R., Cox, B. T., & Treeby, B. E. (2023). *j-Wave: An open-source
