@@ -1,4 +1,4 @@
-MVP Evaluation Results (real, measured — see IMPLEMENTATION_LOG.md Stage 7)
+Evaluation Results (PSNR/SSIM, time-reversal vs. U-Net)
 Checkpoint: epoch 56, val_loss 0.000495
 Test set size: 8
 

@@ -1,7 +1,6 @@
 # Architecture — Photoacoustic Reconstruction
 
-**Status: MVP implemented and verified** (see `IMPLEMENTATION_LOG.md` for the stage-by-stage
-record and `report/mvp_results.txt` for real results). Sections below describe both what was
+Results are in `report/mvp_results.txt` and the README. Sections below describe both what was
 actually built (phantom generation, forward simulation, time-reversal baseline, U-Net refinement,
 PSNR/SSIM evaluation — all real) and what remains genuinely unimplemented strong-version/extension
 scope (Tikhonov baseline, full sparsity sweep, multiple phantom families, uncertainty
@@ -81,22 +80,24 @@ phantom generator ──▶ forward model (wave PDE simulation) ──▶ sensor
                                                     swept over sensor count / sparsity)
 ```
 
+**j-Wave implementation notes:** `jwave.geometry.Medium` uses a PML absorbing boundary
+(`pml_size`, default 20.0), the physically correct choice for this open-domain problem, not a
+periodic boundary. `TimeAxis.from_medium(medium, cfl=0.3)` derives the time step from a CFL
+condition automatically. `geometry.points_on_circle(n, radius, centre)` builds the circular sensor
+array. `simulate_wave_propagation(...)` returns the full field trajectory (indexed `[-1]` for the
+final-time field, used for time-reversal); sensor recordings have shape `(Nt, n_sensors, 1)`.
+
 ## 4. Data
 
-**Fully synthetic — no real acquired sensor dataset is used or claimed.** Phantom source
-(**corrected during implementation — see IMPLEMENTATION_LOG.md Stage 2**): seeded, reproducible
-random Gaussian-blob phantoms (`src/phantoms.py::random_blob_phantom`), not "Shepp-Logan-style" as
-originally planned. Reason for the correction: Shepp-Logan is a CT X-ray-attenuation phantom (a
-stylised anatomical cross-section) and is not a physically appropriate model for a photoacoustic
-initial-pressure source, which is a localised optical absorber. Randomly-placed Gaussian blobs are
-standard and honest stand-ins for such absorbers, and — unlike a single fixed reference image —
-give a real family of distinct instances for train/val/test splits.
-- Optionally, vessel-like silhouettes derived from a public 2D vessel-segmentation dataset (e.g.
-  DRIVE) used purely as binary/greyscale masks — not part of the MVP, deferred as in the original
-  plan.
-
-No data has been generated yet. `data/` currently contains nothing but this architecture's
-description of what will go there.
+**Fully synthetic: no real acquired sensor dataset is used or claimed.** Phantom source: seeded,
+reproducible random Gaussian-blob phantoms (`src/phantoms.py::random_blob_phantom`), not a
+Shepp-Logan-style phantom. Shepp-Logan is a CT X-ray-attenuation phantom (a stylised anatomical
+cross-section) and is not a physically appropriate model for a photoacoustic initial-pressure
+source, which is a localised optical absorber; randomly-placed Gaussian blobs are standard,
+physically reasonable stand-ins for such absorbers, and give a real family of distinct instances
+for train/val/test splits.
+- A vessel-like-silhouette phantom family, derived from a public 2D vessel-segmentation dataset
+  (e.g. DRIVE), is a possible extension but is not implemented.
 
 ## 5. Methods
 
@@ -160,7 +161,7 @@ description of what will go there.
   (`report/mvp_comparison.png`). PSNR/SSIM-vs-sparsity curves across a full sweep — **not done**
   (needs E2, strong-version scope; the MVP only has the 2 discrete sparsity settings, not a swept
   curve).
-- A short technical report in `report/` — **DONE** (`report/MVP_Final_Report.md`/`.pdf`).
+- Results and analysis — **DONE** (README, `report/mvp_results.txt`).
 - (Optional) uncertainty-calibration figure if E4 is pursued — **not done**.
 
 **MVP outputs now exist and are real** (`report/mvp_results.txt`, `report/mvp_comparison.png`,

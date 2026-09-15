@@ -24,8 +24,7 @@ def diagnose_ssim_disagreement(gt, tr, learned, structure_threshold=0.05):
     """Region-masked SSIM diagnosis, computed programmatically (not hand-typed) so it stays
     correct across reruns. Splits the SSIM map into "inside true structure" (gt > threshold) vs.
     "background" (gt <= threshold) and reports both, plus background-region intensity stats that
-    explain any disagreement with PSNR. See IMPLEMENTATION_LOG.md Stage 7 for the original
-    diagnosis this automates.
+    explain any disagreement with PSNR.
     """
     _, map_tr = sk_ssim_full(gt, tr, data_range=1.0, full=True)
     _, map_learned = sk_ssim_full(gt, learned, data_range=1.0, full=True)
@@ -98,7 +97,7 @@ def main():
     # Save genuine numeric results, not just print them.
     os.makedirs("report", exist_ok=True)
     with open("report/mvp_results.txt", "w") as f:
-        f.write("MVP Evaluation Results (real, measured — see IMPLEMENTATION_LOG.md Stage 7)\n")
+        f.write("Evaluation Results (PSNR/SSIM, time-reversal vs. U-Net)\n")
         f.write(f"Checkpoint: epoch {checkpoint['epoch']}, val_loss {checkpoint['val_loss']:.6f}\n")
         f.write(f"Test set size: {len(phantoms)}\n\n")
         f.write(f"{'sparsity':<10}{'n':<4}{'TR PSNR':<12}{'TR SSIM':<12}{'Learned PSNR':<14}{'Learned SSIM':<14}\n")

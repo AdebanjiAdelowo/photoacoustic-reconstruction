@@ -1,5 +1,4 @@
-"""Forward acoustic-wave simulation, implemented on top of j-Wave (verified working — see
-IMPLEMENTATION_LOG.md Stage 1).
+"""Forward acoustic-wave simulation, implemented on top of j-Wave.
 
 Documented configuration (verified, not assumed):
 - Grid: 2D, square, N x N points, spacing dx (metres) — both configurable, see DEFAULT_* below.

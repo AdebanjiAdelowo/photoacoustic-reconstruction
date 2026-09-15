@@ -1,6 +1,5 @@
 # Pinned to a verified working environment: conda env "photoacoustic", Python 3.11,
-# macOS/Apple Silicon, CPU-only JAX. Verified 04 Sep 2026 — jwave smoke test passed
-# (scripts/smoke_test.py). See IMPLEMENTATION_LOG.md Stage 1.
+# macOS/Apple Silicon, CPU-only JAX. Verified via the jwave smoke test (scripts/smoke_test.py).
 
 numpy==2.4.6
 scipy==1.17.1

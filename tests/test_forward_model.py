@@ -8,7 +8,7 @@ def _run_small_case():
     grid_size = 32
     phantom = random_blob_phantom(size=grid_size, seed=0, n_blobs=2)
     domain, medium = build_domain_and_medium(grid_size)
-    # radius=15, not 12: verified empirically (see IMPLEMENTATION_LOG.md Stage 3) that radius=12
+    # radius=15, not 12: verified empirically that radius=12
     # placed one sensor within the Gaussian phantom's non-negligible tail, contaminating the
     # "signal starts near zero" check with near-field pickup rather than wave-arrival delay.
     sensor_pos = sparse_view_sensor_array(n_sensors=8, radius=15, centre=(grid_size // 2, grid_size // 2))
@@ -29,9 +29,8 @@ def test_recording_is_not_trivially_zero():
 
 
 def test_signal_starts_near_zero_before_wave_arrival():
-    # Qualitative physical sanity check, not a strict numerical assertion (per
-    # IMPLEMENTATION_PLAN.md Stage 10): the very first time sample should be near zero, since the
-    # wave has not yet had time to reach any sensor.
+    # Qualitative physical sanity check, not a strict numerical assertion: the very first time
+    # sample should be near zero, since the wave has not yet had time to reach any sensor.
     recording, _ = _run_small_case()
     first_sample = recording[0, :, 0]
     assert np.abs(first_sample).max() < 1e-3

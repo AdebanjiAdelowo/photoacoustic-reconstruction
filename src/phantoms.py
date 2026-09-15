@@ -1,7 +1,7 @@
 """Synthetic phantom generation.
 
-Implemented for the MVP. See IMPLEMENTATION_LOG.md Stage 2 for the design correction this
-represents relative to the original architecture plan (which said "Shepp-Logan-style").
+Uses seeded random Gaussian-blob phantoms rather than a Shepp-Logan-style phantom, since
+Shepp-Logan models CT X-ray attenuation, not a localised photoacoustic optical absorber.
 
 Coordinate convention: phantoms are (size, size) float32 numpy arrays, axis 0 = x, axis 1 = y
 (numpy 'ij' meshgrid indexing), origin at array index [0, 0]. Values are a dimensionless initial

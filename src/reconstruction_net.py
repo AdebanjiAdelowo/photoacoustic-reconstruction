@@ -1,7 +1,7 @@
 """Learned reconstruction: a small U-Net refining the time-reversal estimate.
 
-Deliberately small for the MVP (per IMPLEMENTATION_PLAN.md Stage 7 — "do not optimize architecture
-complexity, the objective is to test the research question, not maximize network size"). Input:
+Deliberately small: the objective is to test the research question, not maximise network size.
+Input:
 the time-reversal reconstruction (1, H, W). Output: a refined reconstruction (1, H, W), same shape,
 regression (not classification/segmentation) — the one real architectural change from the
 `abdominal-ct-segmentation` design this reuses (that project's final layer is a sigmoid/Dice-loss

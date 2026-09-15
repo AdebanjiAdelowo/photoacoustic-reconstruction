@@ -1,10 +1,9 @@
 """Classical reconstruction baseline: time-reversal.
 
-Implemented for the MVP (Stage 4). Tikhonov inversion (originally planned as a second baseline) is
-explicitly deferred past the MVP per IMPLEMENTATION_PLAN.md Stage 5b — not implemented here.
+Tikhonov inversion (a second, differentiable-forward-model baseline) is not implemented here.
 
-Method (standard time-reversal, verified against jwave's actual API — see IMPLEMENTATION_LOG.md
-Stage 4): the recorded sensor signals are reversed in time and re-injected as sources (via
+Method (standard time-reversal, verified against jwave's actual API): the recorded sensor signals
+are reversed in time and re-injected as sources (via
 jwave.geometry.Sources) into a second forward simulation with zero initial pressure. The resulting
 field at the *final* time step of this reversed simulation is the reconstruction estimate — this
 is the standard time-reversal convention, and was verified empirically (not assumed) that

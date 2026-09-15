@@ -129,8 +129,8 @@ Degradation is real but gradual, and the time-reversal baseline itself is almost
 noise model. This is expected, not a sign the noise had no effect: time-reversal reconstruction
 sums time-reversed signals over hundreds of time samples and multiple sensors, which averages down
 i.i.d. per-sample sensor noise substantially before it reaches the image domain the U-Net operates
-on. This is a genuinely useful result, not a validation gap dismissed: it shows the reported gains
-are not fragile to *this* noise model at *these* levels, but it does **not** establish robustness to
+on. The result shows the reported gains are not fragile to *this* noise model at *these* levels,
+but it does **not** establish robustness to
 noise levels beyond "severe" here, to correlated/non-Gaussian sensor noise, or to noise realistic for
 a specific real acquisition system, since the U-Net was trained exclusively on noiseless data. A
 noise-aware training regime and a systematic characterisation of real photoacoustic sensor noise
@@ -230,22 +230,6 @@ degradation under sparser arrays), and the evaluation metrics (PSNR/SSIM sanity 
   retraining) rather than a full noise-aware pipeline; it does not characterise the U-Net's
   behaviour under noise levels beyond those tested, correlated or non-Gaussian noise, or noise
   statistics matched to a specific real acquisition system.
-
-## Possible Extensions
-
-Possible extensions include a Tikhonov-regularised baseline using the differentiable forward model,
-a finer sparsity sweep, additional phantom families (e.g. vessel-like silhouettes), a background- or
-sparsity-promoting loss term to address the residual haze artefact, uncertainty quantification, and
-training the U-Net on noisy (not just clean) time-reversal reconstructions so it can be evaluated
-fairly, rather than only stress-tested, under realistic sensor noise.
-
-## Remaining Work
-
-The noise-robustness evaluation above (five noise levels, existing checkpoint) is complete. The
-next planned extension is diffusion posterior sampling (Chung et al. 2023) as a genuinely
-different reconstruction method targeting the diagnosed MSE-regression haze failure mode; not yet
-started. Portfolio-wide project status is tracked centrally in the author's Selected Projects
-documentation; this project's status there is DEFERRED RESEARCH.
 
 ## References
 

@@ -1,4 +1,4 @@
-"""Environment/API verification smoke test — Stage 1 of IMPLEMENTATION_PLAN.md.
+"""Environment/API verification smoke test.
 
 Proves: jwave imports, JAX runs, a tiny acoustic initial-value-problem simulation executes and
 produces sensor recordings of plausible shape. This is a verification script, not a research
