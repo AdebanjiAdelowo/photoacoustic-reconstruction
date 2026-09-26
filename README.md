@@ -53,6 +53,28 @@ Limitations.
   482K parameters) mapping the time-reversal estimate to a refined reconstruction, trained by MSE
   regression.
 
+The synthetic pipeline. The ground-truth phantom is used to simulate the recordings, as the
+regression target for training, and for scoring; the time-reversal step receives only the
+recordings and the sensor geometry:
+
+```mermaid
+flowchart LR
+    PH["Phantom p₀<br/>seeded Gaussian blobs<br/>(src/phantoms.py)"]
+    FW["j-Wave forward simulation<br/>wave equation, PML, CFL 0.3<br/>(src/forward_model.py)"]
+    SN["Circular sensor array<br/>16 or 64 sensors<br/>recordings y_k(t)"]
+    NZ["Optional i.i.d. Gaussian noise<br/>evaluation only"]
+    TR["Time-reversal reconstruction<br/>(src/baselines.py)"]
+    UN["U-Net refinement f_θ<br/>3 levels, ~482K parameters"]
+    EV["PSNR and SSIM vs. p₀<br/>whole image and region-masked"]
+    TRN["Training: Adam, MSE<br/>pairs (TR estimate, p₀)"]
+
+    PH --> FW --> SN --> TR --> UN --> EV
+    SN -.-> NZ -.-> TR
+    TR --> EV
+    PH -.target.-> TRN -.weights θ.-> UN
+    PH -.reference.-> EV
+```
+
 ## Experimental Setup
 
 **Dataset** (`scripts/generate_training_data.py`): 56 synthetic examples (40 train, 8 validation,
@@ -81,7 +103,13 @@ The learned model improves PSNR by 11.8 dB (16 sensors) and 10.6 dB (64 sensors)
 and visibly removes streak artefacts (`report/mvp_comparison.png`). It scores lower on whole-image
 SSIM than time-reversal at both sparsity settings.
 
-A region-masked breakdown (`report/mvp_ssim_diagnosis.png`) explains the SSIM discrepancy: within
+![Ground truth, time-reversal and learned reconstructions for four test examples, with per-image PSNR](report/mvp_comparison.png)
+
+*Four of the eight test examples (sensor count in each column title). Time-reversal shows streak and
+ring artefacts, strongest in the 16-sensor example; the learned refinement removes most of them but
+leaves a faint textured background.*
+
+A region-masked breakdown for one test example (example 0 in `report/mvp_results.txt`; `report/mvp_ssim_diagnosis.png`) illustrates the SSIM discrepancy: within
 the true phantom structure, the learned model's SSIM is far higher than time-reversal's (0.936 vs.
 0.188), but in the background, which covers about 96% of the image area, time-reversal scores
 higher (0.870 vs. 0.405). The learned model introduces a small residual background haze that SSIM's
@@ -89,13 +117,21 @@ local-variance sensitivity penalises heavily, and since the background dominates
 inverts the whole-image SSIM ranking despite the large PSNR and visual improvement. This is a known
 failure mode of MSE-trained restoration networks rather than an artefact of the evaluation.
 
+<p align="center">
+  <img src="report/mvp_ssim_diagnosis.png" width="600"
+       alt="Ground truth, both reconstructions, and local SSIM maps for time-reversal and the learned model">
+</p>
+
+*Local SSIM maps for one test example. Time-reversal scores near 1 in the flat background but low on
+the absorbers; the learned model scores high on the absorbers and lower across the background.*
+
 ## Key Findings
 
 - The learned refinement network substantially outperforms time-reversal on PSNR and visual
   artefact removal at both tested sparsity levels.
-- Whole-image SSIM favours time-reversal, but this is driven entirely by a diffuse background haze
-  in the learned reconstruction; SSIM restricted to the true phantom structure strongly favours the
-  learned model.
+- Whole-image SSIM favours time-reversal. In the example analysed region by region, this comes from
+  a diffuse background haze in the learned reconstruction, while SSIM restricted to the true phantom
+  structure strongly favours the learned model.
 - The dataset (56 examples total, 8 held out for testing) is small; the results characterise this
   specific synthetic setup and should not be read as general accuracy figures for photoacoustic
   reconstruction.
