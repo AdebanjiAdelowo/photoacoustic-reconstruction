@@ -18,21 +18,16 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.calibration import fit_scale, fit_scales_per_sensor_count
 from src.evaluate import psnr, ssim
 
 SPARSITIES = (16, 64)
 
 
-def fit_scale(recon: np.ndarray, gt: np.ndarray) -> float:
-    """Least-squares scalar a minimising ||a * recon - gt||^2."""
-    return float((recon * gt).sum() / (recon * recon).sum())
-
-
 def main():
     train, val, test = (np.load(f"data/{s}.npz") for s in ("train", "val", "test"))
     a_global = fit_scale(train["recon"], train["phantom"])
-    a_sparsity = {k: fit_scale(train["recon"][train["n_sensors"] == k],
-                               train["phantom"][train["n_sensors"] == k]) for k in SPARSITIES}
+    a_sparsity = fit_scales_per_sensor_count(train["recon"], train["phantom"], train["n_sensors"])
     a_val = fit_scale(val["recon"], val["phantom"])
 
     lines = [

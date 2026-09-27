@@ -24,6 +24,13 @@ sensors). 8 examples is already within (below) the 10-20-example "representative
 of check calls for, so no further subsampling is applied -- the full test split is used at every
 noise level.
 
+Calibrated time-reversal: TR is linear in the recording, so TR(signal + noise) = TR(signal) +
+TR(noise), and its amplitude gain does not depend on the noise. Each noisy TR reconstruction is
+therefore also scored after multiplying by the per-sensor-count gain fitted on the noiseless
+TRAINING split (src/calibration.py, the same gains as scripts/evaluate_calibrated_baseline.py). No
+gain is fitted on noisy data or on test ground truth. The U-Net input is the raw TR reconstruction,
+as in training; calibration affects only the TR baseline row.
+
 Outputs: report/noise_sensitivity_results.txt (human-readable table) and
 report/noise_sensitivity_results.json (machine-readable), plus console output.
 """
@@ -37,6 +44,7 @@ import torch
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.baselines import time_reversal_reconstruction
+from src.calibration import training_scales
 from src.evaluate import psnr, ssim
 from src.forward_model import build_domain_and_medium, simulate_sensor_data, sparse_view_sensor_array
 from src.reconstruction_net import ReconstructionUNet
@@ -86,6 +94,9 @@ def main():
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
 
+    tr_gain = training_scales("data/train.npz")  # per sensor count, noiseless training split only
+    gains = np.array([tr_gain[int(k)] for k in n_sensors_arr])
+
     domain, medium = build_domain_and_medium(GRID_SIZE)
     # Sensor positions depend only on n_sensors (not on the individual phantom), so build once per
     # sparsity setting present in the test split.
@@ -115,7 +126,7 @@ def main():
     per_level_rows = []
 
     header = (f"{'noise':<12}{'rel.std':<10}{'SNR(dB)':<10}{'n':<4}{'TR PSNR':<10}{'TR SSIM':<10}"
-              f"{'UNet PSNR':<11}{'UNet SSIM':<11}")
+              f"{'UNet PSNR':<11}{'UNet SSIM':<11}{'TRcal PSNR':<12}{'TRcal SSIM':<12}")
     print(header)
 
     for label, rel_std in NOISE_LEVELS:
@@ -136,6 +147,9 @@ def main():
         tr_ssims = [ssim(recons_tr[i], phantoms[i]) for i in range(n_examples)]
         unet_psnrs = [psnr(recons_unet[i], phantoms[i]) for i in range(n_examples)]
         unet_ssims = [ssim(recons_unet[i], phantoms[i]) for i in range(n_examples)]
+        recons_trcal = recons_tr * gains[:, None, None]
+        trcal_psnrs = [psnr(recons_trcal[i], phantoms[i]) for i in range(n_examples)]
+        trcal_ssims = [ssim(recons_trcal[i], phantoms[i]) for i in range(n_examples)]
 
         # None (not float("inf")) for the noiseless row, so the JSON output stays strictly valid
         # JSON (RFC 8259 has no Infinity literal) rather than relying on Python json's non-standard
@@ -152,6 +166,8 @@ def main():
                 "tr_ssim": float(np.mean([tr_ssims[i] for i in idx])),
                 "unet_psnr": float(np.mean([unet_psnrs[i] for i in idx])),
                 "unet_ssim": float(np.mean([unet_ssims[i] for i in idx])),
+                "trcal_psnr": float(np.mean([trcal_psnrs[i] for i in idx])),
+                "trcal_ssim": float(np.mean([trcal_ssims[i] for i in idx])),
             }
 
         row = {
@@ -163,6 +179,8 @@ def main():
             "tr_ssim": float(np.mean(tr_ssims)),
             "unet_psnr": float(np.mean(unet_psnrs)),
             "unet_ssim": float(np.mean(unet_ssims)),
+            "trcal_psnr": float(np.mean(trcal_psnrs)),
+            "trcal_ssim": float(np.mean(trcal_ssims)),
             "by_sparsity": by_sparsity,
         }
         all_results[label] = row
@@ -170,7 +188,8 @@ def main():
 
         snr_str = "inf" if rel_std == 0.0 else f"{snr_db:.1f}"
         print(f"{label:<12}{rel_std:<10.2f}{snr_str:<10}{row['n']:<4}{row['tr_psnr']:<10.3f}"
-              f"{row['tr_ssim']:<10.4f}{row['unet_psnr']:<11.3f}{row['unet_ssim']:<11.4f}")
+              f"{row['tr_ssim']:<10.4f}{row['unet_psnr']:<11.3f}{row['unet_ssim']:<11.4f}"
+              f"{row['trcal_psnr']:<12.3f}{row['trcal_ssim']:<12.4f}")
 
     # Sanity check: the noiseless row here must match scripts/evaluate_mvp.py's already-verified
     # numbers (report/mvp_results.txt), since relative_std=0.0 leaves the recording untouched.
@@ -192,6 +211,9 @@ def main():
             "test_set_note": "full existing test split (data/test.npz), no retraining, no subsampling",
             "noise_model": "i.i.d. Gaussian noise added to the simulated sensor recording, "
                             "sigma = relative_std * RMS(clean recording), evaluation-time only",
+            "tr_calibration": "trcal_* = TR x per-sensor-count least-squares gain fitted on the "
+                              "noiseless training split (src/calibration.py)",
+            "tr_gain_per_sensor_count": {str(k): v for k, v in tr_gain.items()},
             "levels": per_level_rows,
         }, f, indent=2)
 
@@ -202,22 +224,32 @@ def main():
                 "(existing checkpoint, not retrained)\n")
         f.write(f"Test set: {n_examples} examples (full existing test split, data/test.npz)\n")
         f.write("Noise model: i.i.d. Gaussian noise added to the simulated sensor recording only "
-                "(forward physics unchanged); sigma = relative_std * RMS(clean recording)\n\n")
+                "(forward physics unchanged); sigma = relative_std * RMS(clean recording)\n")
+        f.write("TRcal: TR x per-sensor-count gain fitted on the noiseless training split ("
+                + ", ".join(f"{k} sensors: {v:.3f}" for k, v in tr_gain.items()) + ")\n\n")
         f.write("Overall (both sparsity settings pooled):\n")
         f.write(header + "\n")
         for row in per_level_rows:
             snr_str = "inf" if row["relative_std"] == 0.0 else f"{row['snr_db']:.1f}"
             f.write(f"{row['label']:<12}{row['relative_std']:<10.2f}{snr_str:<10}{row['n']:<4}"
                     f"{row['tr_psnr']:<10.3f}{row['tr_ssim']:<10.4f}{row['unet_psnr']:<11.3f}"
-                    f"{row['unet_ssim']:<11.4f}\n")
+                    f"{row['unet_ssim']:<11.4f}{row['trcal_psnr']:<12.3f}{row['trcal_ssim']:<12.4f}\n")
 
         f.write("\nBy sparsity setting:\n")
         f.write(f"{'noise':<12}{'sensors':<9}{'n':<4}{'TR PSNR':<10}{'TR SSIM':<10}"
-                f"{'UNet PSNR':<11}{'UNet SSIM':<11}\n")
+                f"{'UNet PSNR':<11}{'UNet SSIM':<11}{'TRcal PSNR':<12}{'TRcal SSIM':<12}\n")
         for row in per_level_rows:
             for k, sub in row["by_sparsity"].items():
                 f.write(f"{row['label']:<12}{k:<9}{sub['n']:<4}{sub['tr_psnr']:<10.3f}"
-                        f"{sub['tr_ssim']:<10.4f}{sub['unet_psnr']:<11.3f}{sub['unet_ssim']:<11.4f}\n")
+                        f"{sub['tr_ssim']:<10.4f}{sub['unet_psnr']:<11.3f}{sub['unet_ssim']:<11.4f}"
+                        f"{sub['trcal_psnr']:<12.3f}{sub['trcal_ssim']:<12.4f}\n")
+
+    # strip the padding left after the last column of each table row
+    txt = "report/noise_sensitivity_results.txt"
+    with open(txt) as f:
+        stripped = "\n".join(line.rstrip() for line in f.read().splitlines()) + "\n"
+    with open(txt, "w") as f:
+        f.write(stripped)
 
     print("\nSaved report/noise_sensitivity_results.txt and report/noise_sensitivity_results.json")
 

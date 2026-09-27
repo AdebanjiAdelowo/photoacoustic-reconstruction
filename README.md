@@ -180,32 +180,39 @@ adds i.i.d. Gaussian noise to the simulated sensor recordings as an evaluation-t
 (the noiseless path used everywhere else is unchanged) and re-runs the **existing, not retrained**
 checkpoint at four positive noise levels plus the noiseless baseline, on the full 8-example test
 split (16- and 64-sensor settings). Noise standard deviation is expressed relative to each
-example's own clean-recording RMS amplitude, with an equivalent SNR shown for reference:
+example's own clean-recording RMS amplitude, with an equivalent SNR shown for reference. Each noisy
+time-reversal reconstruction is scored both raw and after the training-set amplitude calibration
+described under Results. Time-reversal is linear in the recording, so its gain does not depend on the
+noise, and the same noiseless-training gains are applied unchanged; nothing is fitted on noisy or test
+data. The U-Net still receives the raw reconstruction, as in training.
 
-| Noise level | Relative std | SNR (dB) | TR PSNR | TR SSIM | U-Net PSNR | U-Net SSIM |
-|---|---|---|---|---|---|---|
-| noiseless | 0.00 | inf | 20.70 dB | 0.720 | 31.90 dB | 0.508 |
-| low | 0.01 | 40.0 | 20.70 dB | 0.720 | 31.90 dB | 0.509 |
-| moderate | 0.05 | 26.0 | 20.70 dB | 0.720 | 31.87 dB | 0.507 |
-| high | 0.20 | 14.0 | 20.70 dB | 0.717 | 31.42 dB | 0.484 |
-| severe | 0.50 | 6.0 | 20.69 dB | 0.700 | 29.72 dB | 0.432 |
+| Noise level | Rel. std | SNR (dB) | TR PSNR, raw | TR PSNR, calibrated | U-Net PSNR | TR SSIM, raw | TR SSIM, calibrated | U-Net SSIM |
+|---|---|---|---|---|---|---|---|---|
+| noiseless | 0.00 | inf | 20.70 dB | 28.45 dB | 31.90 dB | 0.720 | 0.426 | 0.508 |
+| low | 0.01 | 40.0 | 20.70 dB | 28.45 dB | 31.90 dB | 0.720 | 0.426 | 0.509 |
+| moderate | 0.05 | 26.0 | 20.70 dB | 28.41 dB | 31.87 dB | 0.720 | 0.424 | 0.507 |
+| high | 0.20 | 14.0 | 20.70 dB | 27.95 dB | 31.42 dB | 0.717 | 0.399 | 0.484 |
+| severe | 0.50 | 6.0 | 20.69 dB | 26.03 dB | 29.72 dB | 0.700 | 0.327 | 0.432 |
 
 (overall numbers pooled across both sparsity settings; the per-sparsity breakdown, which matches
-`report/mvp_results.txt` exactly at the noiseless level, is in `report/noise_sensitivity_results.txt`
-and `report/noise_sensitivity_results.json`.)
+`report/mvp_results.txt` and `report/calibrated_baseline_results.txt` exactly at the noiseless level,
+is in `report/noise_sensitivity_results.txt` and `report/noise_sensitivity_results.json`.)
 
-**Finding**: over this range, the U-Net's PSNR/SSIM gains over time-reversal do not vanish or
-reverse, even at a fairly aggressive 6 dB sensor SNR (severe: U-Net PSNR 29.72 dB vs. TR 20.69 dB).
-Degradation is real but gradual, and the time-reversal baseline itself is almost unaffected by this
-noise model. This is expected, not a sign the noise had no effect: time-reversal reconstruction
-sums time-reversed signals over hundreds of time samples and multiple sensors, which averages down
-i.i.d. per-sample sensor noise substantially before it reaches the image domain the U-Net operates
-on. The result shows the reported gains are not fragile to *this* noise model at *these* levels,
-but it does **not** establish robustness to
+**Finding**: over this range the U-Net keeps its PSNR advantage over time-reversal, including the
+calibrated baseline, down to a 6 dB sensor SNR. Against calibrated time-reversal that advantage is
+3.45 dB noiseless and 3.69 dB at the severe level (per sensor count, about 4.8 to 5.3 dB at 16 sensors
+and 2.1 dB at 64 sensors at every level), much smaller than the 9 to 11 dB gap against raw
+time-reversal. Raw time-reversal PSNR hardly moves with noise, but that is because its error is
+dominated by its amplitude deficit, not because time-reversal suppresses the noise: once calibrated
+it loses 2.4 dB from noiseless to severe, about as much as the U-Net (2.2 dB). On SSIM the U-Net is
+below raw time-reversal at every level and above calibrated time-reversal overall, but at 64 sensors
+it is slightly below calibrated time-reversal at every level (by 0.013 to 0.032). The result shows the PSNR gain over a
+calibrated baseline is not fragile to *this* noise model at *these* levels, on 4 test images per
+sparsity setting, but it does **not** establish robustness to
 noise levels beyond "severe" here, to correlated/non-Gaussian sensor noise, or to noise realistic for
 a specific real acquisition system, since the U-Net was trained exclusively on noiseless data. A
 noise-aware training regime and a systematic characterisation of real photoacoustic sensor noise
-statistics are out of scope for this check; see Limitations and Possible Extensions.
+statistics are out of scope for this check; see Limitations.
 
 ## Repository Structure
 
@@ -219,7 +226,8 @@ photoacoustic-reconstruction/
 │   ├── forward_model.py     j-Wave acoustic forward simulation and sparse sensing
 │   ├── baselines.py         time-reversal reconstruction
 │   ├── reconstruction_net.py  U-Net refinement model
-│   └── evaluate.py          PSNR/SSIM evaluation
+│   ├── evaluate.py          PSNR/SSIM evaluation
+│   └── calibration.py       training-set amplitude calibration of time-reversal
 ├── scripts/
 │   ├── smoke_test.py            forward-model sanity check
 │   ├── generate_training_data.py  builds train/val/test splits
@@ -231,7 +239,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml
 ├── data/                     generated train/val/test splits (not committed)
 ├── experiments/              trained checkpoint (not committed)
-├── tests/                    15 tests covering phantoms, forward model, baselines, and evaluation
+├── tests/                    18 tests covering phantoms, forward model, baselines, evaluation, and calibration
 └── report/                   evaluation figures and results
 ```
 
@@ -284,20 +292,26 @@ Run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-15 tests cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+18 tests cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
-degradation under sparser arrays), and the evaluation metrics (PSNR/SSIM sanity checks).
+degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
+amplitude calibration (recovers a known gain, is the least-squares minimiser, fits each sensor count
+from its own examples only).
 
 ## Limitations
 
 - The Tikhonov-regularised baseline is not implemented; only time-reversal is compared against the
   learned model. Because the forward simulation is differentiable (JAX-based), this baseline could
   be solved by gradient descent through the forward model without assembling an explicit forward
-  operator.
-- Headline and noise-robustness comparisons use raw time-reversal, whose PSNR is sensitive to its
-  amplitude scale. The training-set-calibrated baseline (see Results) is reported for the noiseless
-  test split only; the noise study has not been repeated with it.
+  operator. A fair comparison needs a verified gradient (checked against finite differences), a
+  convergence criterion, and the regularisation weight chosen per sensor count on the training or
+  validation split, never on test ground truth. Unlike time-reversal, its amplitude is set by
+  fitting the recordings through the same forward model, so it should need no separate calibration
+  beyond the shrinkage the regulariser itself introduces.
+- The headline table compares against raw time-reversal, whose PSNR is sensitive to its amplitude
+  scale; the training-set-calibrated baseline (see Results and Noise Robustness) is the fairer
+  comparison and shows a much smaller PSNR gain.
 - The dataset uses a single phantom family (random Gaussian blobs) and only two sensor counts (16
   and 64); results have not been checked across other phantom types or a finer sparsity sweep.
 - The test split contains 8 examples (4 per sparsity setting), which is small for stable PSNR/SSIM
