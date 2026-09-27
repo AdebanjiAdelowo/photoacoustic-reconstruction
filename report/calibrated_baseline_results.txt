@@ -1,0 +1,14 @@
+Amplitude-calibrated time-reversal baseline (test split; scale fitted on the training split only)
+train n=40, test n=8
+scale fitted on train: global a=4.118; per sensor count 16: a=14.679, 64: a=3.684
+(for reference, a global scale fitted on the validation split instead: a=4.905)
+
+sensors  n   variant                               PSNR    SSIM
+16       4   raw TR (as in mvp_results.txt)       18.97   0.705
+16       4   TR x global train scale              20.82   0.544
+16       4   TR x per-sensor-count train scale    25.96   0.322
+16       4   oracle: per-image scale (uses GT)    26.12   0.336
+64       4   raw TR (as in mvp_results.txt)       22.43   0.734
+64       4   TR x global train scale              30.87   0.499
+64       4   TR x per-sensor-count train scale    30.95   0.529
+64       4   oracle: per-image scale (uses GT)    31.10   0.516

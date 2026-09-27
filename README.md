@@ -103,11 +103,43 @@ The learned model improves PSNR by 11.8 dB (16 sensors) and 10.6 dB (64 sensors)
 and visibly removes streak artefacts (`report/mvp_comparison.png`). It scores lower on whole-image
 SSIM than time-reversal at both sparsity settings.
 
+**Amplitude calibration.** PSNR and SSIM use a fixed data range of 1 against phantoms in $[0,1]$,
+but raw time-reversal output peaks at only about 0.06 to 0.24, so the raw comparison also penalises
+time-reversal for its amplitude scale. `scripts/evaluate_calibrated_baseline.py` fits a single
+least-squares scalar per sensor count on the **training** split (the data the U-Net was trained on)
+and applies it unchanged to the test split, so no test information is used
+(`report/calibrated_baseline_results.txt`):
+
+| Sensors | TR PSNR, raw | TR PSNR, calibrated | TR SSIM, calibrated | Learned PSNR | Learned SSIM |
+|---|---|---|---|---|---|
+| 16 | 18.97 dB | 25.96 dB | 0.322 | 30.73 dB | 0.500 |
+| 64 | 22.43 dB | 30.95 dB | 0.529 | 33.08 dB | 0.517 |
+
+With calibration the PSNR gain of the learned model falls from 11.8 to 4.8 dB (16 sensors) and from
+10.6 to 2.1 dB (64 sensors); most of the raw gap at 64 sensors is amplitude scale. Calibration also
+lowers time-reversal's SSIM, because scaling amplifies its background artefacts, so the SSIM ranking
+reverses at 16 sensors and is roughly level at 64. A per-image scale fitted against each test ground
+truth, an oracle, gains only about 0.15 dB more, so the calibrated baseline is close to the best any
+single scale can do. These are 4 test images per setting, and the fitted scale is itself uncertain
+(a global scale fitted on the validation split is 4.9 against 4.1 on the training split).
+
 ![Ground truth, time-reversal and learned reconstructions for four test examples, with per-image PSNR](report/mvp_comparison.png)
 
-*Four of the eight test examples (sensor count in each column title). Time-reversal shows streak and
-ring artefacts, strongest in the 16-sensor example; the learned refinement removes most of them but
-leaves a faint textured background.*
+*Four of the eight test examples (sensor count in each column title). Ground truth is shown on
+$[0,1]$, but each reconstruction panel is auto-scaled to its own range, which makes structure visible
+and hides amplitude. Time-reversal shows streak and ring artefacts, strongest in the 16-sensor
+example; the learned refinement removes most of them but leaves a faint textured background.*
+
+![The same four test examples on a common 0 to 1 display range, with absolute-error maps on a shared scale](report/comparison_shared_scale.png)
+
+*The same four examples, same checkpoint and PSNR values (raw, uncalibrated time-reversal), with
+every intensity panel on the fixed $[0,1]$ range that PSNR and SSIM are computed against, and both error rows on one colour scale
+(`scripts/plot_comparison_shared_scale.py`). Time-reversal peaks at only 0.06 to 0.24 against a
+ground-truth peak of 1, so most of its error is missing amplitude on the absorbers. The learned
+model's error is small and spread over the background, the haze discussed below. Like
+`report/mvp_comparison.png`, this figure needs the local, gitignored dataset and checkpoint;
+from a fresh clone it can only be regenerated after `generate_training_data.py` and `train.py`, and a
+retrained model will not match it exactly.*
 
 A region-masked breakdown for one test example (example 0 in `report/mvp_results.txt`; `report/mvp_ssim_diagnosis.png`) illustrates the SSIM discrepancy: within
 the true phantom structure, the learned model's SSIM is far higher than time-reversal's (0.936 vs.
@@ -127,11 +159,14 @@ the absorbers; the learned model scores high on the absorbers and lower across t
 
 ## Key Findings
 
-- The learned refinement network substantially outperforms time-reversal on PSNR and visual
-  artefact removal at both tested sparsity levels.
-- Whole-image SSIM favours time-reversal. In the example analysed region by region, this comes from
-  a diffuse background haze in the learned reconstruction, while SSIM restricted to the true phantom
-  structure strongly favours the learned model.
+- The learned refinement network substantially outperforms raw time-reversal on PSNR and visual
+  artefact removal at both tested sparsity levels. Against a time-reversal baseline with a
+  training-set amplitude calibration, the PSNR gain is smaller (4.8 dB at 16 sensors, 2.1 dB at 64),
+  so a large part of the raw gain, especially at 64 sensors, is amplitude scale.
+- Whole-image SSIM favours raw time-reversal. In the example analysed region by region, this comes
+  from a diffuse background haze in the learned reconstruction, while SSIM restricted to the true
+  phantom structure strongly favours the learned model. After amplitude calibration the SSIM ranking
+  reverses at 16 sensors and is roughly level at 64.
 - The dataset (56 examples total, 8 held out for testing) is small; the results characterise this
   specific synthetic setup and should not be read as general accuracy figures for photoacoustic
   reconstruction.
@@ -190,6 +225,8 @@ photoacoustic-reconstruction/
 │   ├── generate_training_data.py  builds train/val/test splits
 │   ├── train.py                  trains the U-Net
 │   ├── evaluate_mvp.py           runs the PSNR/SSIM comparison
+│   ├── plot_comparison_shared_scale.py  comparison figure on a common display range
+│   ├── evaluate_calibrated_baseline.py  amplitude-calibrated time-reversal baseline
 │   └── evaluate_noise_sensitivity.py  noise-robustness check on the existing checkpoint
 ├── configs/                  mvp.yaml
 ├── data/                     generated train/val/test splits (not committed)
@@ -223,6 +260,12 @@ python scripts/train.py
 # run the PSNR/SSIM comparison on the test split
 python scripts/evaluate_mvp.py
 
+# the same comparison on a common [0, 1] display range, with error maps
+python scripts/plot_comparison_shared_scale.py
+
+# time-reversal with a training-set amplitude calibration (needs the data splits, not the U-Net)
+python scripts/evaluate_calibrated_baseline.py
+
 # noise-robustness check: re-evaluate the existing checkpoint under added sensor noise
 python scripts/evaluate_noise_sensitivity.py
 ```
@@ -252,6 +295,9 @@ degradation under sparser arrays), and the evaluation metrics (PSNR/SSIM sanity 
   learned model. Because the forward simulation is differentiable (JAX-based), this baseline could
   be solved by gradient descent through the forward model without assembling an explicit forward
   operator.
+- Headline and noise-robustness comparisons use raw time-reversal, whose PSNR is sensitive to its
+  amplitude scale. The training-set-calibrated baseline (see Results) is reported for the noiseless
+  test split only; the noise study has not been repeated with it.
 - The dataset uses a single phantom family (random Gaussian blobs) and only two sensor counts (16
   and 64); results have not been checked across other phantom types or a finer sparsity sweep.
 - The test split contains 8 examples (4 per sparsity setting), which is small for stable PSNR/SSIM
