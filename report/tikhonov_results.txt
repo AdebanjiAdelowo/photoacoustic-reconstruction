@@ -1,0 +1,60 @@
+Tikhonov baseline (scripts/tikhonov_evaluation.py)
+
+Tikhonov baseline on the expanded test set (run scripts/expanded_evaluation.py first).
+
+Method: src/tikhonov.py (explicit forward matrix per sensor geometry, direct solve of the normal
+equations, lam = mu * ||A^T A||). The forward matrices are cached in data/tikhonov_A_{16,64}.npy
+(gitignored, about 80 MB and 310 MB).
+
+Regularisation selection, on the TRAINING split only (16 and 24 images for 16 and 64 sensors), by
+mean PSNR over the grid MU_GRID, separately per sensor count:
+  * "fixed": mu selected on noiseless training recordings and then used at every noise level (the
+    analogue of the U-Net, which was trained on noiseless data only);
+  * "per noise level": mu selected on training recordings with the same relative noise level. The
+    training noise uses its own seeds (TRAIN_NOISE_SEED), independent of the test noise.
+No test image influences any choice. Validation-split PSNR at the selected mu is reported as a check.
+
+Test data and noise: exactly the recordings of scripts/expanded_evaluation.py (same phantoms, same
+noise generator, seeds and draw order), so results pair image by image with raw/calibrated
+time-reversal and the U-Net in report/expanded_eval_per_image.npz.
+
+Caveat: Tikhonov inverts the same discrete forward model that generated the synthetic data (an
+"inverse crime"), which favours it relative to a setting with model mismatch.
+
+Selected mu (training split) and validation PSNR at that mu:
+  noise noiseless 16 sensors: mu 1e-10, val PSNR 42.40; train PSNR by mu: 1e-12 43.78, 1e-11 44.69, 1e-10 44.76, 1e-09 44.68, 1e-08 44.58, 1e-07 44.44, 1e-06 44.19, 1e-05 43.77, 1e-04 42.88, 1e-03 40.93, 1e-02 36.71, 1e-01 26.95, 1e+00 20.28, 1e+01 18.93
+  noise noiseless 64 sensors: mu 1e-07, val PSNR 90.11; train PSNR by mu: 1e-12 50.28, 1e-11 58.15, 1e-10 66.14, 1e-09 74.48, 1e-08 82.80, 1e-07 90.72, 1e-06 89.48, 1e-05 79.75, 1e-04 69.57, 1e-03 58.98, 1e-02 46.23, 1e-01 31.35, 1e+00 21.70, 1e+01 19.39
+  noise low       16 sensors: mu 1e-03, val PSNR 38.82; train PSNR by mu: 1e-12 -32.32, 1e-11 -23.15, 1e-10 -13.73, 1e-09 -4.35, 1e-08 4.98, 1e-07 14.49, 1e-06 24.56, 1e-05 34.15, 1e-04 40.06, 1e-03 40.62, 1e-02 36.69, 1e-01 26.95, 1e+00 20.27, 1e+01 18.93
+  noise low       64 sensors: mu 1e-03, val PSNR 52.02; train PSNR by mu: 1e-12 -28.26, 1e-11 -20.40, 1e-10 -12.03, 1e-09 -3.26, 1e-08 5.55, 1e-07 14.77, 1e-06 24.36, 1e-05 33.83, 1e-04 43.34, 1e-03 52.11, 1e-02 46.14, 1e-01 31.35, 1e+00 21.70, 1e+01 19.39
+  noise moderate  16 sensors: mu 1e-03, val PSNR 36.68; train PSNR by mu: 1e-12 -46.34, 1e-11 -37.04, 1e-10 -27.72, 1e-09 -18.40, 1e-08 -9.03, 1e-07 0.55, 1e-06 10.87, 1e-05 21.05, 1e-04 30.16, 1e-03 36.91, 1e-02 36.42, 1e-01 26.94, 1e+00 20.27, 1e+01 18.93
+  noise moderate  64 sensors: mu 1e-02, val PSNR 44.32; train PSNR by mu: 1e-12 -42.16, 1e-11 -34.34, 1e-10 -26.14, 1e-09 -17.33, 1e-08 -8.45, 1e-07 0.78, 1e-06 10.48, 1e-05 19.93, 1e-04 29.38, 1e-03 39.05, 1e-02 44.43, 1e-01 31.34, 1e+00 21.70, 1e+01 19.39
+  noise high      16 sensors: mu 1e-02, val PSNR 33.46; train PSNR by mu: 1e-12 -58.51, 1e-11 -49.21, 1e-10 -39.76, 1e-09 -30.30, 1e-08 -20.95, 1e-07 -11.55, 1e-06 -1.26, 1e-05 9.01, 1e-04 18.46, 1e-03 27.51, 1e-02 33.55, 1e-01 26.90, 1e+00 20.27, 1e+01 18.93
+  noise high      64 sensors: mu 1e-02, val PSNR 36.53; train PSNR by mu: 1e-12 -54.24, 1e-11 -46.44, 1e-10 -38.14, 1e-09 -29.34, 1e-08 -20.40, 1e-07 -11.15, 1e-06 -1.59, 1e-05 7.88, 1e-04 17.37, 1e-03 27.05, 1e-02 36.50, 1e-01 31.26, 1e+00 21.70, 1e+01 19.39
+  noise severe    16 sensors: mu 1e-02, val PSNR 28.96; train PSNR by mu: 1e-12 -66.21, 1e-11 -56.98, 1e-10 -47.77, 1e-09 -38.44, 1e-08 -29.15, 1e-07 -19.65, 1e-06 -9.28, 1e-05 0.99, 1e-04 10.43, 1e-03 19.71, 1e-02 28.01, 1e-01 26.69, 1e+00 20.28, 1e+01 18.93
+  noise severe    64 sensors: mu 1e-01, val PSNR 30.46; train PSNR by mu: 1e-12 -62.25, 1e-11 -54.44, 1e-10 -46.07, 1e-09 -37.30, 1e-08 -28.53, 1e-07 -19.32, 1e-06 -9.64, 1e-05 -0.16, 1e-04 9.34, 1e-03 19.12, 1e-02 28.97, 1e-01 30.73, 1e+00 21.70, 1e+01 19.39
+
+== noise noiseless
+  16 sensors PSNR: Tikhonov fixed 43.56 [43.03, 44.16] (vs U-Net +11.72 [+11.26, +12.22], vs cal TR +16.62 [+16.06, +17.22]) | Tikhonov per_level 43.56 [43.03, 44.16] (vs U-Net +11.72 [+11.26, +12.22], vs cal TR +16.62 [+16.06, +17.22]) | raw TR 19.86, cal TR 26.94, U-Net 31.84
+  16 sensors SSIM: Tikhonov fixed 0.939 [0.934, 0.945] (vs U-Net +0.271 [+0.256, +0.287], vs cal TR +0.610 [+0.602, +0.617]) | Tikhonov per_level 0.939 [0.934, 0.945] (vs U-Net +0.271 [+0.256, +0.287], vs cal TR +0.610 [+0.602, +0.617]) | raw TR 0.784, cal TR 0.329, U-Net 0.668
+  64 sensors PSNR: Tikhonov fixed 90.51 [90.17, 90.86] (vs U-Net +58.04 [+57.62, +58.47], vs cal TR +61.24 [+61.07, +61.44]) | Tikhonov per_level 90.51 [90.17, 90.86] (vs U-Net +58.04 [+57.62, +58.47], vs cal TR +61.24 [+61.07, +61.44]) | raw TR 21.29, cal TR 29.27, U-Net 32.48
+  64 sensors SSIM: Tikhonov fixed 1.000 [1.000, 1.000] (vs U-Net +0.291 [+0.275, +0.306], vs cal TR +0.532 [+0.522, +0.543]) | Tikhonov per_level 1.000 [1.000, 1.000] (vs U-Net +0.291 [+0.275, +0.306], vs cal TR +0.532 [+0.522, +0.543]) | raw TR 0.684, cal TR 0.468, U-Net 0.709
+== noise low
+  16 sensors PSNR: Tikhonov fixed -13.26 [-13.59, -12.94] (vs U-Net -45.10 [-45.55, -44.64], vs cal TR -40.20 [-40.42, -39.97]) | Tikhonov per_level 39.79 [39.42, 40.18] (vs U-Net +7.95 [+7.60, +8.31], vs cal TR +12.85 [+12.46, +13.26]) | raw TR 19.86, cal TR 26.94, U-Net 31.84
+  16 sensors SSIM: Tikhonov fixed 0.000 [0.000, 0.000] (vs U-Net -0.667 [-0.685, -0.650], vs cal TR -0.329 [-0.336, -0.322]) | Tikhonov per_level 0.861 [0.853, 0.869] (vs U-Net +0.193 [+0.177, +0.210], vs cal TR +0.532 [+0.523, +0.540]) | raw TR 0.784, cal TR 0.329, U-Net 0.668
+  64 sensors PSNR: Tikhonov fixed 14.57 [14.26, 14.90] (vs U-Net -17.90 [-18.30, -17.49], vs cal TR -14.69 [-14.84, -14.55]) | Tikhonov per_level 51.78 [51.46, 52.12] (vs U-Net +19.30 [+18.89, +19.71], vs cal TR +22.51 [+22.36, +22.66]) | raw TR 21.29, cal TR 29.27, U-Net 32.47
+  64 sensors SSIM: Tikhonov fixed 0.108 [0.106, 0.110] (vs U-Net -0.601 [-0.618, -0.584], vs cal TR -0.360 [-0.370, -0.350]) | Tikhonov per_level 0.990 [0.990, 0.991] (vs U-Net +0.281 [+0.266, +0.297], vs cal TR +0.523 [+0.512, +0.533]) | raw TR 0.684, cal TR 0.467, U-Net 0.709
+== noise moderate
+  16 sensors PSNR: Tikhonov fixed -27.21 [-27.53, -26.89] (vs U-Net -58.93 [-59.39, -58.49], vs cal TR -54.11 [-54.33, -53.89]) | Tikhonov per_level 36.71 [36.49, 36.93] (vs U-Net +5.00 [+4.71, +5.29], vs cal TR +9.81 [+9.62, +10.00]) | raw TR 19.86, cal TR 26.90, U-Net 31.71
+  16 sensors SSIM: Tikhonov fixed -0.000 [-0.000, -0.000] (vs U-Net -0.660 [-0.677, -0.643], vs cal TR -0.327 [-0.333, -0.320]) | Tikhonov per_level 0.779 [0.773, 0.786] (vs U-Net +0.120 [+0.103, +0.137], vs cal TR +0.453 [+0.446, +0.460]) | raw TR 0.784, cal TR 0.327, U-Net 0.660
+  64 sensors PSNR: Tikhonov fixed 0.59 [0.28, 0.92] (vs U-Net -31.82 [-32.22, -31.42], vs cal TR -28.65 [-28.80, -28.50]) | Tikhonov per_level 44.06 [43.74, 44.41] (vs U-Net +11.65 [+11.26, +12.05], vs cal TR +14.82 [+14.67, +14.98]) | raw TR 21.29, cal TR 29.24, U-Net 32.41
+  64 sensors SSIM: Tikhonov fixed 0.011 [0.011, 0.012] (vs U-Net -0.693 [-0.708, -0.677], vs cal TR -0.454 [-0.465, -0.444]) | Tikhonov per_level 0.943 [0.939, 0.946] (vs U-Net +0.238 [+0.223, +0.254], vs cal TR +0.477 [+0.469, +0.486]) | raw TR 0.684, cal TR 0.466, U-Net 0.704
+== noise high
+  16 sensors PSNR: Tikhonov fixed -39.26 [-39.58, -38.94] (vs U-Net -69.59 [-69.97, -69.23], vs cal TR -65.55 [-65.75, -65.37]) | Tikhonov per_level 33.55 [33.34, 33.75] (vs U-Net +3.22 [+2.98, +3.47], vs cal TR +7.26 [+7.12, +7.39]) | raw TR 19.86, cal TR 26.29, U-Net 30.33
+  16 sensors SSIM: Tikhonov fixed -0.000 [-0.000, -0.000] (vs U-Net -0.575 [-0.589, -0.562], vs cal TR -0.296 [-0.302, -0.290]) | Tikhonov per_level 0.639 [0.631, 0.647] (vs U-Net +0.064 [+0.047, +0.080], vs cal TR +0.343 [+0.337, +0.349]) | raw TR 0.782, cal TR 0.296, U-Net 0.575
+  64 sensors PSNR: Tikhonov fixed -11.49 [-11.79, -11.16] (vs U-Net -43.15 [-43.51, -42.80], vs cal TR -40.40 [-40.53, -40.27]) | Tikhonov per_level 36.27 [35.96, 36.61] (vs U-Net +4.61 [+4.26, +4.96], vs cal TR +7.36 [+7.23, +7.50]) | raw TR 21.28, cal TR 28.92, U-Net 31.67
+  64 sensors SSIM: Tikhonov fixed 0.001 [0.001, 0.001] (vs U-Net -0.652 [-0.666, -0.639], vs cal TR -0.441 [-0.452, -0.431]) | Tikhonov per_level 0.776 [0.766, 0.785] (vs U-Net +0.122 [+0.106, +0.140], vs cal TR +0.334 [+0.327, +0.340]) | raw TR 0.678, cal TR 0.442, U-Net 0.653
+== noise severe
+  16 sensors PSNR: Tikhonov fixed -47.22 [-47.54, -46.90] (vs U-Net -74.32 [-74.61, -74.04], vs cal TR -71.17 [-71.29, -71.04]) | Tikhonov per_level 28.38 [28.11, 28.64] (vs U-Net +1.28 [+1.07, +1.50], vs cal TR +4.43 [+4.36, +4.51]) | raw TR 19.86, cal TR 23.95, U-Net 27.10
+  16 sensors SSIM: Tikhonov fixed -0.000 [-0.000, -0.000] (vs U-Net -0.383 [-0.390, -0.376], vs cal TR -0.225 [-0.229, -0.221]) | Tikhonov per_level 0.380 [0.372, 0.389] (vs U-Net -0.003 [-0.016, +0.010], vs cal TR +0.156 [+0.150, +0.162]) | raw TR 0.773, cal TR 0.225, U-Net 0.383
+  64 sensors PSNR: Tikhonov fixed -19.42 [-19.72, -19.10] (vs U-Net -48.93 [-49.20, -48.64], vs cal TR -46.88 [-46.98, -46.78]) | Tikhonov per_level 30.53 [30.23, 30.84] (vs U-Net +1.02 [+0.78, +1.28], vs cal TR +3.07 [+2.97, +3.18]) | raw TR 21.26, cal TR 27.46, U-Net 29.50
+  64 sensors SSIM: Tikhonov fixed 0.000 [0.000, 0.000] (vs U-Net -0.522 [-0.531, -0.512], vs cal TR -0.365 [-0.374, -0.356]) | Tikhonov per_level 0.712 [0.702, 0.724] (vs U-Net +0.191 [+0.175, +0.208], vs cal TR +0.347 [+0.342, +0.353]) | raw TR 0.649, cal TR 0.365, U-Net 0.522
