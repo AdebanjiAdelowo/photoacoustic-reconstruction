@@ -1,8 +1,8 @@
 # Photoacoustic Reconstruction: Model-Based vs. Learned Inversion Under Sparse-View Sensing
 
-A comparative study of classical time-reversal reconstruction against a learned U-Net refinement
-for photoacoustic (optoacoustic) tomography, evaluated on synthetic phantom data under sparse-view
-sensor arrays.
+A comparative study of time-reversal, Tikhonov-regularised inversion and a learned U-Net
+refinement for photoacoustic (optoacoustic) tomography, evaluated on synthetic phantom data under
+sparse-view sensor arrays.
 
 ## Overview
 
@@ -10,8 +10,9 @@ Photoacoustic tomography reconstructs an initial pressure distribution (an optic
 from acoustic pressure signals recorded by a sensor array. Under sparse-view sensing, where only a
 few sensors are available, classical model-based reconstruction produces pronounced streak
 artefacts. This project implements a full synthetic pipeline (phantom generation, forward wave
-simulation, sparse sensing, reconstruction, evaluation) and compares a time-reversal baseline
-against a U-Net that refines the time-reversal estimate, across two sensor-array densities.
+simulation, sparse sensing, reconstruction, evaluation) and compares time-reversal, a
+Tikhonov-regularised inversion of the forward model, and a U-Net that refines the time-reversal
+estimate, across two sensor-array densities and five sensor-noise levels.
 
 ## Problem Formulation
 
@@ -47,8 +48,10 @@ Limitations.
   rather than a localised optical absorber; randomly placed Gaussian blobs give a physically
   reasonable family of distinct phantom instances for train/val/test splits.
 - **Sensor arrays**: circular arrays of 16 or 64 sensors.
-- **Classical baseline** (`src/baselines.py`): time-reversal reconstruction via j-Wave's
-  photoacoustic simulation workflow.
+- **Classical baselines**: time-reversal reconstruction via j-Wave's photoacoustic simulation
+  workflow (`src/baselines.py`), scored raw and with a training-set amplitude calibration
+  (`src/calibration.py`); and Tikhonov-regularised least squares through an explicit matrix of the
+  forward simulation (`src/tikhonov.py`).
 - **Learned model** (`src/reconstruction_net.py`): a compact 3-level U-Net (base width 16, about
   482K parameters) mapping the time-reversal estimate to a refined reconstruction, trained by MSE
   regression.
@@ -77,77 +80,88 @@ flowchart LR
 
 ## Experimental Setup
 
-**Dataset** (`scripts/generate_training_data.py`): 56 synthetic examples (40 train, 8 validation,
-8 test), generated with deterministic, non-overlapping seed ranges per split. Each example is
-randomly assigned one of the two sensor counts (16 or 64), and a single U-Net is trained across
-both settings rather than one model per sparsity level.
+**Data** (`scripts/generate_training_data.py`): synthetic Gaussian-blob phantoms on a 64 × 64 grid,
+40 training and 8 validation examples, each randomly assigned one of the two sensor counts (16 or 64).
+A single U-Net is trained across both settings rather than one model per sparsity level.
 
 **Training** (`scripts/train.py`): Adam optimiser, MSE loss, 60 epochs, batch size 8, best-validation
-checkpointing, fixed seed. Training loss decreased from 0.0281 to 0.0002 and validation loss from
-0.0118 to 0.0005, both monotonically, in about 5 seconds on an Apple Silicon MPS backend.
+checkpointing.
 
-**Evaluation** (`scripts/evaluate_mvp.py`): PSNR and SSIM between each method's reconstruction and
-ground truth on the held-out test split, computed separately for each sensor count (4 test
-examples per setting).
+**Evaluation** (`scripts/expanded_evaluation.py`, the source of every headline number below):
+- 400 held-out test phantoms generated exactly like the training data, with seeds disjoint from the
+  training and validation splits and exactly 200 per sensor count;
+- the U-Net recipe above trained 5 times (seeds 0 to 4, CPU, deterministic), so results reflect
+  the method rather than one lucky or unlucky network;
+- time-reversal both raw and with a training-set amplitude calibration (below);
+- PSNR and SSIM against the phantom (data range 1), with 95% bootstrap confidence intervals over
+  test images, and the spread between the 5 trained networks reported separately.
+
+An earlier evaluation used 8 test images and one network (`scripts/evaluate_mvp.py`,
+`report/mvp_results.txt`); its numbers are superseded by the expanded evaluation.
 
 ## Results
 
-Test set (n = 4 per sparsity setting):
+### Amplitude calibration of time-reversal
 
-| Sensors | TR PSNR | TR SSIM | Learned PSNR | Learned SSIM |
-|---|---|---|---|---|
-| 16 | 18.97 dB | 0.706 | 30.73 dB | 0.500 |
-| 64 | 22.43 dB | 0.735 | 33.08 dB | 0.517 |
+PSNR and SSIM compare against phantoms in $[0,1]$, but raw time-reversal output peaks at only about
+0.06 to 0.24, so the raw comparison mostly measures missing amplitude. Time-reversal is linear in the
+recording, so one gain per sensor count corrects it. The gain is fitted by least squares on the
+**training** split (`src/calibration.py`) and applied unchanged to every test image and noise level:
 
-The learned model improves PSNR by 11.8 dB (16 sensors) and 10.6 dB (64 sensors) over time-reversal,
-and visibly removes streak artefacts (`report/mvp_comparison.png`). It scores lower on whole-image
-SSIM than time-reversal at both sparsity settings.
+| Sensors | Training-split gain (95% CI, bootstrap over training images) | Validation-split gain | Test-set gain (oracle, for reference only) |
+|---|---|---|---|
+| 16 | 14.68 (14.23 to 15.23), 16 images | 14.65, 5 images | 14.31 |
+| 64 | 3.68 (3.59 to 3.78), 24 images | 4.09, 3 images | 3.68 |
 
-**Amplitude calibration.** PSNR and SSIM use a fixed data range of 1 against phantoms in $[0,1]$,
-but raw time-reversal output peaks at only about 0.06 to 0.24, so the raw comparison also penalises
-time-reversal for its amplitude scale. `scripts/evaluate_calibrated_baseline.py` fits a single
-least-squares scalar per sensor count on the **training** split (the data the U-Net was trained on)
-and applies it unchanged to the test split, so no test information is used
-(`report/calibrated_baseline_results.txt`):
+The training gain agrees with the gain an oracle would fit on the test set, so calibration transfers.
+The validation gain at 64 sensors rests on 3 images.
 
-| Sensors | TR PSNR, raw | TR PSNR, calibrated | TR SSIM, calibrated | Learned PSNR | Learned SSIM |
+### Reconstruction quality (noiseless recordings)
+
+400 test images; mean with 95% bootstrap CI over images. U-Net: mean of the 5 trained networks per
+image, with the range of the 5 networks' own means in brackets
+(`report/expanded_eval_results.txt`):
+
+| Sensors | Metric | Raw time-reversal | Calibrated time-reversal | U-Net (5 networks) | U-Net minus calibrated TR (paired) |
 |---|---|---|---|---|---|
-| 16 | 18.97 dB | 25.96 dB | 0.322 | 30.73 dB | 0.500 |
-| 64 | 22.43 dB | 30.95 dB | 0.529 | 33.08 dB | 0.517 |
+| 16 | PSNR | 19.86 dB [19.56, 20.16] | 26.94 dB [26.70, 27.18] | 31.84 dB [31.48, 32.21] (networks 30.93 to 32.84) | +4.90 dB [4.55, 5.23] |
+| 64 | PSNR | 21.29 dB [20.98, 21.60] | 29.27 dB [28.98, 29.56] | 32.48 dB [32.09, 32.88] (networks 31.19 to 33.57) | +3.21 dB [2.84, 3.59] |
+| 16 | SSIM | 0.784 [0.774, 0.794] | 0.329 [0.323, 0.336] | 0.668 [0.650, 0.685] (networks 0.607 to 0.785) | +0.339 [0.320, 0.358] |
+| 64 | SSIM | 0.684 [0.673, 0.697] | 0.468 [0.457, 0.478] | 0.709 [0.694, 0.725] (networks 0.650 to 0.857) | +0.242 [0.220, 0.263] |
 
-With calibration the PSNR gain of the learned model falls from 11.8 to 4.8 dB (16 sensors) and from
-10.6 to 2.1 dB (64 sensors); most of the raw gap at 64 sensors is amplitude scale. Calibration also
-lowers time-reversal's SSIM, because scaling amplifies its background artefacts, so the SSIM ranking
-reverses at 16 sensors and is roughly level at 64. A per-image scale fitted against each test ground
-truth, an oracle, gains only about 0.15 dB more, so the calibrated baseline is close to the best any
-single scale can do. These are 4 test images per setting, and the fitted scale is itself uncertain
-(a global scale fitted on the validation split is 4.9 against 4.1 on the training split).
+- Against calibrated time-reversal the U-Net gains 4.9 dB (16 sensors) and 3.2 dB (64 sensors). Most
+  of the 11 to 12 dB gap against raw time-reversal is amplitude scale.
+- Which network is trained matters about as much as the test-image sampling: the 5 networks' mean
+  PSNR spans about 2 dB, several times the width of the image-level confidence interval. The single
+  network used in earlier versions of this README (32.83 and 33.43 dB here) is at the top of that
+  range.
+- Raw time-reversal has the highest whole-image SSIM at 16 sensors because its near-zero background
+  matches the phantom background; calibrated time-reversal has the lowest, since scaling it up also
+  amplifies its artefacts. The U-Net is above calibrated time-reversal on SSIM at both sensor counts.
+
+The figures below come from the original network on four examples of the original 8-image test
+set; they illustrate the artefacts, not the statistics above.
 
 ![Ground truth, time-reversal and learned reconstructions for four test examples, with per-image PSNR](report/mvp_comparison.png)
 
-*Four of the eight test examples (sensor count in each column title). Ground truth is shown on
-$[0,1]$, but each reconstruction panel is auto-scaled to its own range, which makes structure visible
-and hides amplitude. Time-reversal shows streak and ring artefacts, strongest in the 16-sensor
-example; the learned refinement removes most of them but leaves a faint textured background.*
+*Four examples from the original test set (sensor count in each column title). Ground truth is shown
+on $[0,1]$, but each reconstruction panel is auto-scaled to its own range, which makes structure
+visible and hides amplitude. Time-reversal shows streak and ring artefacts, strongest in the
+16-sensor example; the learned refinement removes most of them but leaves a faint textured
+background.*
 
 ![The same four test examples on a common 0 to 1 display range, with absolute-error maps on a shared scale](report/comparison_shared_scale.png)
 
-*The same four examples, same checkpoint and PSNR values (raw, uncalibrated time-reversal), with
-every intensity panel on the fixed $[0,1]$ range that PSNR and SSIM are computed against, and both error rows on one colour scale
-(`scripts/plot_comparison_shared_scale.py`). Time-reversal peaks at only 0.06 to 0.24 against a
-ground-truth peak of 1, so most of its error is missing amplitude on the absorbers. The learned
-model's error is small and spread over the background, the haze discussed below. Like
-`report/mvp_comparison.png`, this figure needs the local, gitignored dataset and checkpoint;
-from a fresh clone it can only be regenerated after `generate_training_data.py` and `train.py`, and a
-retrained model will not match it exactly.*
+*The same four examples with every intensity panel on the fixed $[0,1]$ range that PSNR and SSIM
+use, and both error rows on one colour scale (`scripts/plot_comparison_shared_scale.py`). Raw
+time-reversal's error is mostly missing amplitude on the absorbers; the learned model's error is
+small and spread over the background. This figure needs the local, gitignored dataset and original
+checkpoint.*
 
-A region-masked breakdown for one test example (example 0 in `report/mvp_results.txt`; `report/mvp_ssim_diagnosis.png`) illustrates the SSIM discrepancy: within
-the true phantom structure, the learned model's SSIM is far higher than time-reversal's (0.936 vs.
-0.188), but in the background, which covers about 96% of the image area, time-reversal scores
-higher (0.870 vs. 0.405). The learned model introduces a small residual background haze that SSIM's
-local-variance sensitivity penalises heavily, and since the background dominates image area, this
-inverts the whole-image SSIM ranking despite the large PSNR and visual improvement. This is a known
-failure mode of MSE-trained restoration networks rather than an artefact of the evaluation.
+A region-masked breakdown for one example (`report/mvp_ssim_diagnosis.png`) shows where the learned
+model loses SSIM: within the true phantom structure its SSIM is far higher than raw time-reversal's
+(0.936 vs. 0.188), but in the background, about 96% of the image, raw time-reversal scores higher
+(0.870 vs. 0.405) because the learned model leaves a faint haze there.
 
 <p align="center">
   <img src="report/mvp_ssim_diagnosis.png" width="600"
@@ -157,62 +171,91 @@ failure mode of MSE-trained restoration networks rather than an artefact of the 
 *Local SSIM maps for one test example. Time-reversal scores near 1 in the flat background but low on
 the absorbers; the learned model scores high on the absorbers and lower across the background.*
 
+### Tikhonov-regularised inversion
+
+`src/tikhonov.py` solves $\min_p \|A p - y\|^2 + \lambda \|p\|^2$ with $\lambda = \mu \|A^T A\|$,
+where $A$ is the forward simulation written as an explicit matrix (one simulation per pixel, 4096
+per sensor geometry) and the normal equations are solved directly. The adjoint was not taken from
+automatic differentiation because neither `jax.vjp` nor `jax.linear_transpose` through j-Wave
+satisfies the adjoint identity here (relative errors 0.25 to 0.5). `tests/test_tikhonov.py` checks
+that the matrix reproduces the forward simulation, the adjoint identity, the gradient against
+finite differences, and that the solution satisfies the normal equations.
+
+$\mu$ is chosen per sensor count on the **training** split by mean PSNR over $\mu = 10^{-12}$ to
+$10^{1}$ (`scripts/tikhonov_evaluation.py`, `report/tikhonov_results.txt`). Two protocols:
+(1) one $\mu$ chosen on noiseless training data and used at every noise level, the analogue of the
+noiselessly trained U-Net; (2) $\mu$ chosen per noise level on training recordings with the same
+noise level, using noise draws independent of the test set. The first grid, $10^{-9}$ to $10^{-1}$,
+put two selections at its edges; it was widened on that basis alone, and the per-noise-level results
+changed by at most 0.07 dB. The test recordings are exactly those used for the other methods.
+
+| Sensors | Noise | Tikhonov PSNR, $\mu$ per noise level | U-Net PSNR (5 networks) | Tikhonov minus U-Net (paired) |
+|---|---|---|---|---|
+| 16 | noiseless | 43.56 dB [43.03, 44.16] | 31.84 dB | +11.72 dB [11.26, 12.22] |
+| 64 | noiseless | 90.51 dB [90.17, 90.86] | 32.48 dB | +58.04 dB [57.62, 58.47] |
+| 16 | high (14 dB SNR) | 33.55 dB [33.34, 33.75] | 30.33 dB | +3.22 dB [2.98, 3.47] |
+| 64 | high (14 dB SNR) | 36.27 dB [35.96, 36.61] | 31.67 dB | +4.61 dB [4.26, 4.96] |
+| 16 | severe (6 dB SNR) | 28.38 dB [28.11, 28.64] | 27.10 dB | +1.28 dB [1.07, 1.50] |
+| 64 | severe (6 dB SNR) | 30.53 dB [30.23, 30.84] | 29.50 dB | +1.02 dB [0.78, 1.28] |
+
+- With $\mu$ matched to the noise level, Tikhonov beats the average U-Net at every noise level and
+  both sensor counts, by a margin that shrinks as noise grows. At the severe level the best of the 5
+  networks (29.24 and 31.18 dB) is above Tikhonov, so there the ranking depends on the network.
+- With $\mu$ chosen on noiseless data, Tikhonov fails under any noise (PSNR below 15 dB even at
+  40 dB SNR): the noiseless choice is essentially unregularised. Its performance depends entirely on
+  choosing $\lambda$ for the noise level.
+- These synthetic data are generated by exactly the operator Tikhonov inverts, with no modelling
+  error (an "inverse crime"). The 64-sensor noiseless result, an essentially exact reconstruction,
+  shows that the discretised 64-sensor problem is nearly invertible, not that Tikhonov would reach
+  that quality on measured data. With model mismatch Tikhonov's advantage would shrink by an
+  unknown amount; that is not tested here.
+
+![PSNR against noise level for calibrated time-reversal, the U-Net and Tikhonov at 16 and 64 sensors](report/tikhonov_noise.png)
+
+*PSNR on the 400 test images at each noise level; Tikhonov uses $\mu$ selected per noise level on
+training data. The noiseless 64-sensor Tikhonov value (90.5 dB) is off the scale.*
+
 ## Key Findings
 
-- The learned refinement network substantially outperforms raw time-reversal on PSNR and visual
-  artefact removal at both tested sparsity levels. Against a time-reversal baseline with a
-  training-set amplitude calibration, the PSNR gain is smaller (4.8 dB at 16 sensors, 2.1 dB at 64),
-  so a large part of the raw gain, especially at 64 sensors, is amplitude scale.
-- Whole-image SSIM favours raw time-reversal. In the example analysed region by region, this comes
-  from a diffuse background haze in the learned reconstruction, while SSIM restricted to the true
-  phantom structure strongly favours the learned model. After amplitude calibration the SSIM ranking
-  reverses at 16 sensors and is roughly level at 64.
-- The dataset (56 examples total, 8 held out for testing) is small; the results characterise this
-  specific synthetic setup and should not be read as general accuracy figures for photoacoustic
-  reconstruction.
+- On 400 test images, a U-Net refinement improves on amplitude-calibrated time-reversal by 4.9 dB
+  (16 sensors) and 3.2 dB (64 sensors) in PSNR; most of the raw 11 to 12 dB gap is amplitude.
+- Training variability is substantial: the mean PSNR of 5 identically configured networks spans about
+  2 dB, so single-network results should not be over-read.
+- A Tikhonov inversion with its regularisation matched to the noise level on training data
+  outperforms the U-Net on these synthetic data at every tested noise level, under conditions (no
+  model mismatch) that favour it.
+- Everything here is synthetic (one phantom family, two sensor counts, one simulator); it
+  characterises this setup, not photoacoustic reconstruction in general.
 
 ## Noise Robustness
 
-The headline results above use a noiseless forward simulation (`src/forward_model.py` has no
-sensor-noise model), and the U-Net was trained only on noiseless time-reversal reconstructions.
-Since real photoacoustic acquisitions are noise-dominated, `scripts/evaluate_noise_sensitivity.py`
-adds i.i.d. Gaussian noise to the simulated sensor recordings as an evaluation-time-only option
-(the noiseless path used everywhere else is unchanged) and re-runs the **existing, not retrained**
-checkpoint at four positive noise levels plus the noiseless baseline, on the full 8-example test
-split (16- and 64-sensor settings). Noise standard deviation is expressed relative to each
-example's own clean-recording RMS amplitude, with an equivalent SNR shown for reference. Each noisy
-time-reversal reconstruction is scored both raw and after the training-set amplitude calibration
-described under Results. Time-reversal is linear in the recording, so its gain does not depend on the
-noise, and the same noiseless-training gains are applied unchanged; nothing is fitted on noisy or test
-data. The U-Net still receives the raw reconstruction, as in training.
+The U-Net is trained only on noiseless reconstructions. `scripts/expanded_evaluation.py` adds i.i.d.
+Gaussian noise to the simulated sensor recordings at evaluation time, with standard deviation
+relative to each recording's RMS amplitude, and scores the same 400 images and 5 networks at each
+level. Calibrated time-reversal uses the same noiseless-training gains at every level.
 
-| Noise level | Rel. std | SNR (dB) | TR PSNR, raw | TR PSNR, calibrated | U-Net PSNR | TR SSIM, raw | TR SSIM, calibrated | U-Net SSIM |
-|---|---|---|---|---|---|---|---|---|
-| noiseless | 0.00 | inf | 20.70 dB | 28.45 dB | 31.90 dB | 0.720 | 0.426 | 0.508 |
-| low | 0.01 | 40.0 | 20.70 dB | 28.45 dB | 31.90 dB | 0.720 | 0.426 | 0.509 |
-| moderate | 0.05 | 26.0 | 20.70 dB | 28.41 dB | 31.87 dB | 0.720 | 0.424 | 0.507 |
-| high | 0.20 | 14.0 | 20.70 dB | 27.95 dB | 31.42 dB | 0.717 | 0.399 | 0.484 |
-| severe | 0.50 | 6.0 | 20.69 dB | 26.03 dB | 29.72 dB | 0.700 | 0.327 | 0.432 |
+![PSNR and SSIM against noise level for raw and calibrated time-reversal and the U-Net, at 16 and 64 sensors](report/expanded_eval_noise.png)
 
-(overall numbers pooled across both sparsity settings; the per-sparsity breakdown, which matches
-`report/mvp_results.txt` and `report/calibrated_baseline_results.txt` exactly at the noiseless level,
-is in `report/noise_sensitivity_results.txt` and `report/noise_sensitivity_results.json`.)
+*Error bars: 95% bootstrap CI over the 200 test images per sensor count. Shaded band: range of the 5
+trained networks' mean scores (`report/expanded_eval_results.txt`).*
 
-**Finding**: over this range the U-Net keeps its PSNR advantage over time-reversal, including the
-calibrated baseline, down to a 6 dB sensor SNR. Against calibrated time-reversal that advantage is
-3.45 dB noiseless and 3.69 dB at the severe level (per sensor count, about 4.8 to 5.3 dB at 16 sensors
-and 2.1 dB at 64 sensors at every level), much smaller than the 9 to 11 dB gap against raw
-time-reversal. Raw time-reversal PSNR hardly moves with noise, but that is because its error is
-dominated by its amplitude deficit, not because time-reversal suppresses the noise: once calibrated
-it loses 2.4 dB from noiseless to severe, about as much as the U-Net (2.2 dB). On SSIM the U-Net is
-below raw time-reversal at every level and above calibrated time-reversal overall, but at 64 sensors
-it is slightly below calibrated time-reversal at every level (by 0.013 to 0.032). The result shows the PSNR gain over a
-calibrated baseline is not fragile to *this* noise model at *these* levels, on 4 test images per
-sparsity setting, but it does **not** establish robustness to
-noise levels beyond "severe" here, to correlated/non-Gaussian sensor noise, or to noise realistic for
-a specific real acquisition system, since the U-Net was trained exclusively on noiseless data. A
-noise-aware training regime and a systematic characterisation of real photoacoustic sensor noise
-statistics are out of scope for this check; see Limitations.
+| Sensors | Noise | Calibrated TR PSNR | U-Net PSNR (5 networks) | Change from noiseless: calibrated TR | Change from noiseless: U-Net |
+|---|---|---|---|---|---|
+| 16 | high (14 dB SNR) | 26.29 dB | 30.33 dB (networks 28.90 to 31.86) | -0.65 dB | -1.51 dB |
+| 16 | severe (6 dB SNR) | 23.95 dB | 27.10 dB (networks 24.85 to 29.24) | -3.00 dB | -4.74 dB |
+| 64 | high (14 dB SNR) | 28.92 dB | 31.67 dB (networks 29.52 to 33.02) | -0.35 dB | -0.81 dB |
+| 64 | severe (6 dB SNR) | 27.46 dB | 29.50 dB (networks 26.87 to 31.18) | -1.81 dB | -2.97 dB |
+
+- The U-Net degrades faster than calibrated time-reversal, losing 1.6 to 2.3 times as many dB, so its
+  PSNR lead shrinks with noise: at 6 dB SNR it is 3.15 dB [2.94, 3.36] at 16 sensors and 2.05 dB
+  [1.78, 2.30] at 64.
+- The averaged lead holds at every level, but not for every network: at 6 dB SNR with 64 sensors
+  one of the 5 networks is 0.59 dB below calibrated time-reversal. The spread between networks grows
+  with noise.
+- Raw time-reversal PSNR barely changes with noise because its error is dominated by missing
+  amplitude, not because it suppresses noise.
+- This is an evaluation-time check with one noise model (i.i.d. Gaussian) and networks trained
+  without noise; it says nothing about correlated noise, other noise levels, or noise-aware training.
 
 ## Repository Structure
 
@@ -227,19 +270,23 @@ photoacoustic-reconstruction/
 │   ├── baselines.py         time-reversal reconstruction
 │   ├── reconstruction_net.py  U-Net refinement model
 │   ├── evaluate.py          PSNR/SSIM evaluation
-│   └── calibration.py       training-set amplitude calibration of time-reversal
+│   ├── calibration.py       training-set amplitude calibration of time-reversal
+│   ├── tikhonov.py          Tikhonov inversion via an explicit forward matrix
+│   └── stats.py             bootstrap confidence intervals over test images
 ├── scripts/
 │   ├── smoke_test.py            forward-model sanity check
 │   ├── generate_training_data.py  builds train/val/test splits
-│   ├── train.py                  trains the U-Net
-│   ├── evaluate_mvp.py           runs the PSNR/SSIM comparison
+│   ├── train.py                  trains the U-Net (--seed, --device cpu for exact repeatability)
+│   ├── expanded_evaluation.py    400-image, 5-network evaluation at all noise levels (headline results)
+│   ├── tikhonov_evaluation.py    Tikhonov selection on training data and evaluation on the same test set
+│   ├── evaluate_mvp.py           original 8-image PSNR/SSIM comparison
 │   ├── plot_comparison_shared_scale.py  comparison figure on a common display range
 │   ├── evaluate_calibrated_baseline.py  amplitude-calibrated time-reversal baseline
-│   └── evaluate_noise_sensitivity.py  noise-robustness check on the existing checkpoint
+│   └── evaluate_noise_sensitivity.py  original 8-image noise check (noise model reused by the expanded evaluation)
 ├── configs/                  mvp.yaml
-├── data/                     generated train/val/test splits (not committed)
-├── experiments/              trained checkpoint (not committed)
-├── tests/                    18 tests covering phantoms, forward model, baselines, evaluation, and calibration
+├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
+├── experiments/              trained checkpoints (not committed)
+├── tests/                    30 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov
 └── report/                   evaluation figures and results
 ```
 
@@ -276,11 +323,21 @@ python scripts/evaluate_calibrated_baseline.py
 
 # noise-robustness check: re-evaluate the existing checkpoint under added sensor noise
 python scripts/evaluate_noise_sensitivity.py
+
+# headline results: 400 test images, 5 networks trained on CPU, all noise levels (about 8 minutes)
+python scripts/expanded_evaluation.py
+
+# Tikhonov baseline on the same test set (after expanded_evaluation.py; about 4 minutes the first
+# time, which includes assembling the forward matrices)
+python scripts/tikhonov_evaluation.py
 ```
 
 ## Reproducing the Experiments
 
-Run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_results.txt`,
+The headline results need only `generate_training_data.py`, then `expanded_evaluation.py` and
+`tikhonov_evaluation.py`. Both are deterministic: rerunning them reproduces
+`report/expanded_eval_*` and `report/tikhonov_*` byte for byte. For the original 8-image evaluation,
+run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_results.txt`,
 `report/mvp_comparison.png`, and `report/mvp_ssim_diagnosis.png`. `evaluate_noise_sensitivity.py`
 (see Noise Robustness) requires `experiments/unet_checkpoint.pt` to already exist (from
 `train.py`) but does not retrain it; it writes `report/noise_sensitivity_results.txt` and
@@ -292,40 +349,33 @@ Run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-18 tests cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+30 tests cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
 amplitude calibration (recovers a known gain, is the least-squares minimiser, fits each sensor count
-from its own examples only).
+from its own examples only), the bootstrap intervals (coverage close to the normal-theory width,
+pairing removes between-image spread), and the Tikhonov solver (the matrix reproduces the forward
+simulation, adjoint identity, gradient against finite differences, normal equations, regularisation
+behaviour).
 
 ## Limitations
 
-- The Tikhonov-regularised baseline is not implemented; only time-reversal is compared against the
-  learned model. Because the forward simulation is differentiable (JAX-based), this baseline could
-  be solved by gradient descent through the forward model without assembling an explicit forward
-  operator. A fair comparison needs a verified gradient (checked against finite differences), a
-  convergence criterion, and the regularisation weight chosen per sensor count on the training or
-  validation split, never on test ground truth. Unlike time-reversal, its amplitude is set by
-  fitting the recordings through the same forward model, so it should need no separate calibration
-  beyond the shrinkage the regulariser itself introduces.
-- The headline table compares against raw time-reversal, whose PSNR is sensitive to its amplitude
-  scale; the training-set-calibrated baseline (see Results and Noise Robustness) is the fairer
-  comparison and shows a much smaller PSNR gain.
-- The dataset uses a single phantom family (random Gaussian blobs) and only two sensor counts (16
-  and 64); results have not been checked across other phantom types or a finer sparsity sweep.
-- The test split contains 8 examples (4 per sparsity setting), which is small for stable PSNR/SSIM
-  estimates.
-- The learned model introduces a diffuse background artefact that lowers whole-image SSIM despite
-  improving both PSNR and structure-region SSIM; this is not corrected in the current model.
-- All data is synthetic; no real acquired photoacoustic sensor data is used.
-- All experiments were run on laptop-scale CPU/MPS hardware.
-- The main forward simulation and all headline results (above) use a noiseless sensor model, and
-  the U-Net was trained only on noiseless data. The Noise Robustness section reports a scoped,
-  evaluation-time-only sensitivity check (i.i.d. Gaussian noise, existing checkpoint, no
-  retraining) rather than a full noise-aware pipeline; it does not characterise the U-Net's
-  behaviour under noise levels beyond those tested, correlated or non-Gaussian noise, or noise
-  statistics matched to a specific real acquisition system.
+- All data are synthetic and generated by the same discrete forward model that time-reversal and
+  Tikhonov use; there is no model mismatch and no real acquired data. This favours the model-based
+  methods, Tikhonov most of all, and the size of that effect on measured data is unknown.
+- One phantom family (random Gaussian blobs), one grid size (64 × 64) and two sensor counts; results
+  have not been checked on other phantom types, larger grids or a finer sparsity sweep.
+- The U-Net is trained on 40 examples. Its results vary by about 2 dB between identically configured
+  training runs, and a larger training set, or a model selected with a larger validation set, may
+  narrow this; neither was tried.
+- Tikhonov's advantage depends on choosing its weight for the noise level. Here the noise level is
+  known in simulation; with an unknown noise level the weight would need to be estimated.
+- Noise is i.i.d. Gaussian, added at evaluation time only, with networks trained without noise. No
+  noise-aware training, correlated noise or measured noise statistics were studied.
+- The learned model leaves a faint background haze that lowers whole-image SSIM; this is not
+  corrected.
+- All experiments run on laptop CPU (and MPS for the original network).
 
 ## References
 
