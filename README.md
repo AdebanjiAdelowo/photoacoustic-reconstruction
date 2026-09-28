@@ -361,7 +361,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    30 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov
+├── tests/                    42 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov
 └── report/                   evaluation figures and results
 ```
 
