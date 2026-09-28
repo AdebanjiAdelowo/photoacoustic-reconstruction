@@ -1,0 +1,54 @@
+Model-mismatch check (scripts/model_mismatch_evaluation.py)
+
+Model-mismatch check: how much of each method's accuracy depends on knowing the exact forward model?
+
+Every other evaluation in this repository generates test data with exactly the operator that the
+reconstruction methods assume (an "inverse crime"): Tikhonov inverts the same discrete matrix, and
+time reversal and the U-Net's training data use the same simulator. This script perturbs one
+physical parameter of the DATA only and keeps every method on the nominal model.
+
+Protocol (fixed before any result was seen):
+  * Mismatch: the true sound speed of the medium is c_true = 1500 * (1 + delta) m/s for
+    delta in {0, +1 %, +2 %}; every method assumes the nominal 1500 m/s. (Sound speed in water
+    changes by about 2 % over roughly 10 degrees C; soft tissue is about 1540 m/s.) delta = 0 is a
+    control and must reproduce the saved results of scripts/expanded_evaluation.py and
+    scripts/tikhonov_evaluation.py.
+  * Sensors sample on the NOMINAL time axis (dt, Nt of the 1500 m/s medium), as a physical
+    acquisition system would; only the wave propagation uses c_true.
+  * Test data: the 400 phantoms of data/test_expanded.npz (200 per sensor count), unchanged.
+  * Noise: noiseless and "high" (relative std 0.20, about 14 dB SNR), with the generator, seeds and
+    draw order of scripts/expanded_evaluation.py, so draws are identical across delta.
+  * Methods, all nominal and unchanged: raw and training-calibrated time reversal (gains from the
+    training split); the 5 U-Nets of scripts/expanded_evaluation.py applied to nominal time
+    reversal; Tikhonov with the nominal matrices (data/tikhonov_A_{16,64}.npy) and the mu already
+    selected on the training split for that noise level (report/tikhonov_results.json). Nothing is
+    refitted or reselected under mismatch.
+  * Uncertainty: 95 % bootstrap intervals over test images; U-Net spread across the 5 networks
+    reported separately.
+
+Control (delta = 0) max |difference| from saved per-image results: noiseless|tr_cal|psnr 0.00e+00, noiseless|unet_mean_over_seeds|psnr 0.00e+00, noiseless|tikhonov|psnr 0.00e+00, noiseless|tr_cal|ssim 0.00e+00, noiseless|unet_mean_over_seeds|ssim 0.00e+00, noiseless|tikhonov|ssim 0.00e+00, high|tr_cal|psnr 0.00e+00, high|unet_mean_over_seeds|psnr 0.00e+00, high|tikhonov|psnr 0.00e+00, high|tr_cal|ssim 0.00e+00, high|unet_mean_over_seeds|ssim 0.00e+00, high|tikhonov|ssim 0.00e+00
+
+c 1500 m/s (+0%), noise noiseless, 16 sensors, PSNR: raw TR 19.86 | cal TR 26.94 [26.70, 27.18] | U-Net 31.84 [31.48, 32.21] (5 networks 30.93-32.84) | Tikhonov 43.56 [43.03, 44.16] | Tikhonov - U-Net 11.72 [11.26, 12.22] | Tikhonov - best network +10.73
+c 1500 m/s (+0%), noise noiseless, 16 sensors, SSIM: raw TR 0.784 | cal TR 0.329 [0.323, 0.336] | U-Net 0.668 [0.650, 0.685] (5 networks 0.607-0.785) | Tikhonov 0.939 [0.934, 0.945] | Tikhonov - U-Net 0.271 [0.256, 0.287] | Tikhonov - best network +0.155
+c 1500 m/s (+0%), noise noiseless, 64 sensors, PSNR: raw TR 21.29 | cal TR 29.27 [28.98, 29.56] | U-Net 32.48 [32.09, 32.88] (5 networks 31.19-33.57) | Tikhonov 90.51 [90.17, 90.86] | Tikhonov - U-Net 58.04 [57.62, 58.47] | Tikhonov - best network +56.94
+c 1500 m/s (+0%), noise noiseless, 64 sensors, SSIM: raw TR 0.684 | cal TR 0.468 [0.457, 0.478] | U-Net 0.709 [0.694, 0.725] (5 networks 0.650-0.857) | Tikhonov 1.000 [1.000, 1.000] | Tikhonov - U-Net 0.291 [0.275, 0.306] | Tikhonov - best network +0.143
+c 1500 m/s (+0%), noise high     , 16 sensors, PSNR: raw TR 19.86 | cal TR 26.29 [26.05, 26.53] | U-Net 30.33 [30.04, 30.62] (5 networks 28.90-31.86) | Tikhonov 33.55 [33.34, 33.75] | Tikhonov - U-Net 3.22 [2.98, 3.47] | Tikhonov - best network +1.69
+c 1500 m/s (+0%), noise high     , 16 sensors, SSIM: raw TR 0.782 | cal TR 0.296 [0.290, 0.302] | U-Net 0.575 [0.562, 0.589] (5 networks 0.460-0.693) | Tikhonov 0.639 [0.631, 0.647] | Tikhonov - U-Net 0.064 [0.047, 0.080] | Tikhonov - best network -0.054
+c 1500 m/s (+0%), noise high     , 64 sensors, PSNR: raw TR 21.28 | cal TR 28.92 [28.63, 29.21] | U-Net 31.67 [31.32, 32.01] (5 networks 29.52-33.02) | Tikhonov 36.27 [35.96, 36.61] | Tikhonov - U-Net 4.61 [4.26, 4.96] | Tikhonov - best network +3.26
+c 1500 m/s (+0%), noise high     , 64 sensors, SSIM: raw TR 0.678 | cal TR 0.442 [0.431, 0.453] | U-Net 0.653 [0.639, 0.667] (5 networks 0.509-0.831) | Tikhonov 0.776 [0.766, 0.785] | Tikhonov - U-Net 0.122 [0.106, 0.140] | Tikhonov - best network -0.055
+c 1515 m/s (+1%), noise noiseless, 16 sensors, PSNR: raw TR 19.85 | cal TR 26.75 [26.51, 26.98] | U-Net 31.68 [31.32, 32.05] (5 networks 30.82-32.65) | Tikhonov 3.56 [3.08, 4.06] | Tikhonov - U-Net -28.12 [-28.73, -27.48] | Tikhonov - best network -29.09
+c 1515 m/s (+1%), noise noiseless, 16 sensors, SSIM: raw TR 0.784 | cal TR 0.325 [0.318, 0.332] | U-Net 0.661 [0.644, 0.679] (5 networks 0.605-0.771) | Tikhonov 0.026 [0.024, 0.027] | Tikhonov - U-Net -0.636 [-0.654, -0.618] | Tikhonov - best network -0.746
+c 1515 m/s (+1%), noise noiseless, 64 sensors, PSNR: raw TR 21.22 | cal TR 29.11 [28.83, 29.40] | U-Net 32.43 [32.05, 32.83] (5 networks 31.22-33.45) | Tikhonov -2.95 [-3.23, -2.64] | Tikhonov - U-Net -35.38 [-35.80, -34.96] | Tikhonov - best network -36.39
+c 1515 m/s (+1%), noise noiseless, 64 sensors, SSIM: raw TR 0.684 | cal TR 0.469 [0.458, 0.480] | U-Net 0.709 [0.693, 0.724] (5 networks 0.651-0.854) | Tikhonov 0.063 [0.061, 0.065] | Tikhonov - U-Net -0.646 [-0.662, -0.630] | Tikhonov - best network -0.791
+c 1515 m/s (+1%), noise high     , 16 sensors, PSNR: raw TR 19.85 | cal TR 26.13 [25.89, 26.36] | U-Net 30.18 [29.89, 30.47] (5 networks 28.82-31.64) | Tikhonov 32.77 [32.56, 32.97] | Tikhonov - U-Net 2.58 [2.34, 2.83] | Tikhonov - best network +1.12
+c 1515 m/s (+1%), noise high     , 16 sensors, SSIM: raw TR 0.782 | cal TR 0.293 [0.287, 0.299] | U-Net 0.569 [0.555, 0.582] (5 networks 0.458-0.678) | Tikhonov 0.590 [0.582, 0.598] | Tikhonov - U-Net 0.021 [0.005, 0.038] | Tikhonov - best network -0.088
+c 1515 m/s (+1%), noise high     , 64 sensors, PSNR: raw TR 21.22 | cal TR 28.78 [28.50, 29.07] | U-Net 31.61 [31.27, 31.96] (5 networks 29.53-32.88) | Tikhonov 35.46 [35.16, 35.77] | Tikhonov - U-Net 3.85 [3.51, 4.19] | Tikhonov - best network +2.58
+c 1515 m/s (+1%), noise high     , 64 sensors, SSIM: raw TR 0.678 | cal TR 0.443 [0.432, 0.454] | U-Net 0.651 [0.638, 0.665] (5 networks 0.511-0.827) | Tikhonov 0.745 [0.735, 0.755] | Tikhonov - U-Net 0.093 [0.076, 0.111] | Tikhonov - best network -0.082
+c 1530 m/s (+2%), noise noiseless, 16 sensors, PSNR: raw TR 19.83 | cal TR 26.48 [26.25, 26.71] | U-Net 31.40 [31.04, 31.76] (5 networks 30.61-32.33) | Tikhonov -2.33 [-2.82, -1.83] | Tikhonov - U-Net -33.73 [-34.34, -33.08] | Tikhonov - best network -34.65
+c 1530 m/s (+2%), noise noiseless, 16 sensors, SSIM: raw TR 0.784 | cal TR 0.321 [0.314, 0.328] | U-Net 0.653 [0.635, 0.671] (5 networks 0.601-0.755) | Tikhonov 0.008 [0.008, 0.009] | Tikhonov - U-Net -0.645 [-0.663, -0.627] | Tikhonov - best network -0.746
+c 1530 m/s (+2%), noise noiseless, 64 sensors, PSNR: raw TR 21.15 | cal TR 28.84 [28.56, 29.12] | U-Net 32.26 [31.88, 32.65] (5 networks 31.13-33.20) | Tikhonov -8.87 [-9.16, -8.56] | Tikhonov - U-Net -41.13 [-41.55, -40.71] | Tikhonov - best network -42.06
+c 1530 m/s (+2%), noise noiseless, 64 sensors, SSIM: raw TR 0.684 | cal TR 0.470 [0.459, 0.481] | U-Net 0.707 [0.692, 0.723] (5 networks 0.653-0.851) | Tikhonov 0.026 [0.025, 0.026] | Tikhonov - U-Net -0.682 [-0.698, -0.666] | Tikhonov - best network -0.825
+c 1530 m/s (+2%), noise high     , 16 sensors, PSNR: raw TR 19.83 | cal TR 25.90 [25.67, 26.13] | U-Net 29.93 [29.64, 30.22] (5 networks 28.66-31.34) | Tikhonov 30.83 [30.62, 31.04] | Tikhonov - U-Net 0.90 [0.66, 1.16] | Tikhonov - best network -0.50
+c 1530 m/s (+2%), noise high     , 16 sensors, SSIM: raw TR 0.782 | cal TR 0.289 [0.283, 0.295] | U-Net 0.560 [0.546, 0.573] (5 networks 0.454-0.660) | Tikhonov 0.495 [0.487, 0.503] | Tikhonov - U-Net -0.064 [-0.081, -0.048] | Tikhonov - best network -0.165
+c 1530 m/s (+2%), noise high     , 64 sensors, PSNR: raw TR 21.14 | cal TR 28.53 [28.25, 28.81] | U-Net 31.44 [31.11, 31.78] (5 networks 29.44-32.64) | Tikhonov 33.83 [33.52, 34.15] | Tikhonov - U-Net 2.39 [2.05, 2.71] | Tikhonov - best network +1.19
+c 1530 m/s (+2%), noise high     , 64 sensors, SSIM: raw TR 0.678 | cal TR 0.444 [0.433, 0.455] | U-Net 0.649 [0.635, 0.663] (5 networks 0.512-0.823) | Tikhonov 0.698 [0.688, 0.709] | Tikhonov - U-Net 0.049 [0.032, 0.068] | Tikhonov - best network -0.124

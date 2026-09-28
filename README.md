@@ -33,9 +33,9 @@ Two reconstruction approaches are compared:
   estimate, $\hat{p}_0^{\text{learned}} = f_\theta(\hat{p}_0^{\text{TR}})$, trained on paired
   (time-reversal estimate, ground-truth phantom) examples.
 
-A Tikhonov-regularised least-squares baseline ($\hat{p}_0 = \arg\min_{p_0} \|A p_0 - y\|_2^2 +
-\lambda \|p_0\|_2^2$) is formulated in the codebase's design notes but not implemented; see
-Limitations.
+- **Tikhonov-regularised inversion** (implemented): $\hat{p}_0 = \arg\min_{p_0} \|A p_0 - y\|_2^2 +
+  \lambda \|p_0\|_2^2$, zeroth-order (L2) Tikhonov with no positivity constraint, where $A$ is the
+  discrete forward simulation written as a matrix; see "Tikhonov-regularised inversion" below.
 
 ## Methodology
 
@@ -208,7 +208,50 @@ changed by at most 0.07 dB. The test recordings are exactly those used for the o
   error (an "inverse crime"). The 64-sensor noiseless result, an essentially exact reconstruction,
   shows that the discretised 64-sensor problem is nearly invertible, not that Tikhonov would reach
   that quality on measured data. With model mismatch Tikhonov's advantage would shrink by an
-  unknown amount; that is not tested here.
+  unknown amount; the model-mismatch check below measures it for one physical parameter.
+- The comparison is not symmetric in what each method is told: the per-noise-level weight uses the
+  test noise level, which is known in simulation, while the U-Net is trained once on noiseless data.
+- Against individual networks the picture is less uniform than against their average: at the severe
+  level Tikhonov's PSNR is above 4 of the 5 networks at 16 sensors and 3 of 5 at 64, and its SSIM at 16
+  sensors is above only 2 of 5 (mean difference -0.003 [-0.016, +0.010]).
+- Why 90.5 dB: with 64 sensors the 19,008 x 4,096 matrix has full column rank (condition number about
+  $1.4\times10^{8}$), and the noiseless test recordings are reproduced by $A$ to about $10^{-6}$
+  relative error, so a nearly unregularised solve recovers the phantom almost exactly. With 16
+  sensors $A$ is rank-deficient (2,334 of 4,096 singular values below $10^{-6}$ of the largest), and the
+  minimum-norm solution suits these smooth blob phantoms.
+
+### Model mismatch
+
+`scripts/model_mismatch_evaluation.py` generates the 400 test recordings with a true sound speed
+$c = 1500\,(1+\delta)$ m/s, $\delta \in \{0, 1\%, 2\%\}$ (water changes by about 2 % over roughly 10 °C;
+soft tissue is about 1540 m/s), sampled on the nominal time axis, while every method keeps assuming
+1500 m/s: the time-reversal gains, the 5 U-Nets, and Tikhonov with the nominal matrix and the weight
+already selected on the training split. Nothing is refitted. The protocol and mismatch levels were
+fixed before any result was seen, and $\delta = 0$ reproduces the saved results exactly
+(`report/model_mismatch_results.txt`).
+
+| Sensors | Noise | $\delta$ | Calibrated TR PSNR | U-Net PSNR (5 networks) | Tikhonov PSNR | Tikhonov minus U-Net, PSNR | Tikhonov minus U-Net, SSIM |
+|---|---|---|---|---|---|---|---|
+| 16 | noiseless | 0 / 1 % / 2 % | 26.94 / 26.75 / 26.48 | 31.84 / 31.68 / 31.40 | 43.56 / 3.56 / -2.33 | +11.72 / -28.12 / -33.73 | +0.271 / -0.636 / -0.645 |
+| 64 | noiseless | 0 / 1 % / 2 % | 29.27 / 29.11 / 28.84 | 32.48 / 32.43 / 32.26 | 90.51 / -2.95 / -8.87 | +58.04 / -35.38 / -41.13 | +0.291 / -0.646 / -0.682 |
+| 16 | high (14 dB SNR) | 0 / 1 % / 2 % | 26.29 / 26.13 / 25.90 | 30.33 / 30.18 / 29.93 | 33.55 / 32.77 / 30.83 | +3.22 / +2.58 / +0.90 | +0.064 / +0.021 / -0.064 |
+| 64 | high (14 dB SNR) | 0 / 1 % / 2 % | 28.92 / 28.78 / 28.53 | 31.67 / 31.61 / 31.44 | 36.27 / 35.46 / 33.83 | +4.61 / +3.85 / +2.39 | +0.122 / +0.093 / +0.049 |
+
+(PSNR in dB, means over 200 test images per sensor count; 95 % intervals and per-network ranges are in
+the results file. Every Tikhonov-minus-U-Net interval excludes zero.)
+
+![PSNR under sound-speed mismatch for calibrated time reversal, the U-Net and Tikhonov at both sensor counts](report/model_mismatch.png)
+
+- The noiseless collapse is a regularisation-choice failure, not a failure of the method: the weight
+  selected on matched noiseless training data is essentially zero, and model error then acts like
+  unregularised noise. As a diagnostic only (the weight chosen on the test set itself, which is not a
+  valid result), Tikhonov can reach about 35.0 and 41.5 dB at 1 % and 32.1 and 37.3 dB at 2 %
+  (16 and 64 sensors, 100 test images each), still above the U-Net but by far less than with matched data.
+- At 14 dB SNR the noise-level weight is large enough to absorb this mismatch, and Tikhonov keeps a
+  smaller PSNR lead. At 2 % and 16 sensors the U-Net's SSIM is higher and the best network's PSNR is
+  0.5 dB above Tikhonov's, so the ordering depends on the metric and on the network.
+- One mismatch type (sound speed) at two small levels; errors in sensor positions, discretisation,
+  attenuation or heterogeneous media were not tested.
 
 ![PSNR against noise level for calibrated time-reversal, the U-Net and Tikhonov at 16 and 64 sensors](report/tikhonov_noise.png)
 
@@ -220,10 +263,18 @@ training data. The noiseless 64-sensor Tikhonov value (90.5 dB) is off the scale
 - On 400 test images, a U-Net refinement improves on amplitude-calibrated time-reversal by 4.9 dB
   (16 sensors) and 3.2 dB (64 sensors) in PSNR; most of the raw 11 to 12 dB gap is amplitude.
 - Training variability is substantial: the mean PSNR of 5 identically configured networks spans about
-  2 dB, so single-network results should not be over-read.
-- A Tikhonov inversion with its regularisation matched to the noise level on training data
-  outperforms the U-Net on these synthetic data at every tested noise level, under conditions (no
-  model mismatch) that favour it.
+  2 dB, a larger uncertainty than the image-level confidence interval, so single-network results
+  should not be over-read.
+- With the exact forward operator (an inverse crime) and its weight tuned on training data for the
+  known noise level, Tikhonov inversion beats the average U-Net in PSNR at every noise level and in
+  SSIM at every level except the most severe with 16 sensors, where the two are indistinguishable.
+  The noiseless Tikhonov values (43.6 and 90.5 dB) reflect exact inversion of data generated by the
+  same operator, not reconstruction quality.
+- Under a 1 to 2 % error in the assumed sound speed, Tikhonov with the weight tuned for noisy data
+  still leads the U-Net in PSNR at 14 dB SNR, but by less (16 sensors: 3.2, 2.6 and 0.9 dB at 0, 1 and
+  2 %), and at 2 % with 16 sensors the best of the 5 networks is ahead of it in PSNR and the average network in SSIM. With the
+  weight tuned for noiseless matched data, Tikhonov fails under the same mismatch. Time reversal and
+  the U-Net change by less than 0.5 dB.
 - Everything here is synthetic (one phantom family, two sensor counts, one simulator); it
   characterises this setup, not photoacoustic reconstruction in general.
 
@@ -330,6 +381,9 @@ python scripts/expanded_evaluation.py
 # Tikhonov baseline on the same test set (after expanded_evaluation.py; about 4 minutes the first
 # time, which includes assembling the forward matrices)
 python scripts/tikhonov_evaluation.py
+
+# model mismatch: sound speed 1 and 2 % off for the data, every method nominal (about 15 minutes)
+python scripts/model_mismatch_evaluation.py
 ```
 
 ## Reproducing the Experiments
@@ -349,7 +403,7 @@ run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-30 tests cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+42 tests cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -357,18 +411,23 @@ amplitude calibration (recovers a known gain, is the least-squares minimiser, fi
 from its own examples only), the bootstrap intervals (coverage close to the normal-theory width,
 pairing removes between-image spread), and the Tikhonov solver (the matrix reproduces the forward
 simulation, adjoint identity, gradient against finite differences, normal equations, regularisation
-behaviour).
+behaviour), and the evaluation protocol (disjoint seed ranges for every split, the 200/200 sensor
+allocation, calibration gains that match a training-only fit, and a Tikhonov weight that is the
+argmax of the training scores). The Tikhonov gradient is checked by central differences at several
+random points, weights and step sizes.
 
 ## Limitations
 
-- All data are synthetic and generated by the same discrete forward model that time-reversal and
-  Tikhonov use; there is no model mismatch and no real acquired data. This favours the model-based
-  methods, Tikhonov most of all, and the size of that effect on measured data is unknown.
+- All data are synthetic. Except in the model-mismatch check, the test data are generated by the same
+  discrete forward model that time-reversal and Tikhonov use, which favours the model-based methods,
+  Tikhonov most of all. The mismatch check covers one parameter (sound speed, 1 to 2 %); the effect on
+  measured data is unknown.
 - One phantom family (random Gaussian blobs), one grid size (64 × 64) and two sensor counts; results
   have not been checked on other phantom types, larger grids or a finer sparsity sweep.
-- The U-Net is trained on 40 examples. Its results vary by about 2 dB between identically configured
-  training runs, and a larger training set, or a model selected with a larger validation set, may
-  narrow this; neither was tried.
+- The U-Net is trained on 40 examples and selected on 8 validation examples. Its results vary by
+  about 2 dB between identically configured training runs, and 3 of the 5 networks select their
+  checkpoint at the last of the 60 epochs, so validation loss was still falling and the networks may be
+  under-trained. A larger training set or longer training may narrow the spread; neither was tried.
 - Tikhonov's advantage depends on choosing its weight for the noise level. Here the noise level is
   known in simulation; with an unknown noise level the weight would need to be estimated.
 - Noise is i.i.d. Gaussian, added at evaluation time only, with networks trained without noise. No

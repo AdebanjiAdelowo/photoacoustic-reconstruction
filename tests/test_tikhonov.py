@@ -31,15 +31,20 @@ def test_adjoint_identity(setup):
     assert np.isclose((tk.A @ x) @ r, x @ (tk.A.T @ r), rtol=1e-12)
 
 
-def test_gradient_matches_finite_differences(setup):
+@pytest.mark.parametrize("point_seed", [1, 11, 21, 31])
+@pytest.mark.parametrize("mu", [1e-6, 1e-2])
+def test_gradient_matches_finite_differences(setup, point_seed, mu):
+    # several random points and directions; the objective is quadratic, so the central difference
+    # is exact up to round-off and the relative error must be tiny for any step
     tk = setup[3]
-    rng = np.random.default_rng(1)
+    rng = np.random.default_rng(point_seed)
     y = tk.A @ random_blob_phantom(size=N, seed=2, n_blobs=2).reshape(-1)
     p, d = rng.normal(size=tk.A.shape[1]), rng.normal(size=tk.A.shape[1])
     d /= np.linalg.norm(d)
-    h = 1e-3
-    fd = (tk.objective(p + h * d, y, 1e-2) - tk.objective(p - h * d, y, 1e-2)) / (2 * h)
-    assert np.isclose(fd, tk.gradient(p, y, 1e-2) @ d, rtol=1e-6)
+    g = tk.gradient(p, y, mu) @ d
+    for h in (1e-2, 1e-3):
+        fd = (tk.objective(p + h * d, y, mu) - tk.objective(p - h * d, y, mu)) / (2 * h)
+        assert abs(fd - g) / abs(g) < 1e-6
 
 
 @pytest.mark.parametrize("mu", [1e-5, 1e-3, 1e-1])

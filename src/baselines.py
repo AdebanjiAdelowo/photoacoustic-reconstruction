@@ -1,6 +1,6 @@
 """Classical reconstruction baseline: time-reversal.
 
-Tikhonov inversion (a second, differentiable-forward-model baseline) is not implemented here.
+Tikhonov-regularised inversion is implemented separately, in src/tikhonov.py.
 
 Method (standard time-reversal, verified against jwave's actual API): the recorded sensor signals
 are reversed in time and re-injected as sources (via
