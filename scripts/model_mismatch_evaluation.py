@@ -188,8 +188,10 @@ def plot(r):
                             color=c, marker=mk, capsize=3, label=lab)
                 for xi, vi, si in zip(x, v[:, 0], shown):   # values outside the axis are drawn at the edge and labelled
                     if vi != si:
-                        ax.annotate(f"{vi:.1f} dB", (xi, si), xytext=(6, -12 if si == hi_lim else 6),
-                                    textcoords="offset points", fontsize=8, color=c)
+                        right = xi == x[-1]   # keep labels at the last point inside the axis
+                        ax.annotate(f"{vi:.1f} dB", (xi, si), xytext=(-8 if right else 8, -14 if si == hi_lim else 8),
+                                    textcoords="offset points", fontsize=8, color=c,
+                                    ha="right" if right else "left")
             ax.set_ylim(lo_lim - 1, hi_lim + 1)
             ax.set_title(f"{k} sensors, {snr}", fontsize=10)
             ax.grid(alpha=0.3)

@@ -1,0 +1,10 @@
+Tikhonov diagnostics (scripts/tikhonov_diagnostics.py)
+
+16 sensors: A 4752 x 4096; singular values 0.676 to 2.123e-11; condition number 3.18e+10; 2334 of 4096 below 1e-6 of the largest; numerical rank (numpy default tolerance) 4096
+64 sensors: A 19008 x 4096; singular values 1.037 to 8.077e-09; condition number 1.28e+08; 216 of 4096 below 1e-6 of the largest; numerical rank (numpy default tolerance) 4096
+
+Oracle-weight diagnostic (weight chosen on the SAME test images; not a valid result), noiseless, first 100 test images per sensor count:
+  delta +1%, 16 sensors: best mean PSNR 34.98 dB at mu 1e-02; 1e-12 2.97, 1e-11 3.24, 1e-10 3.45, 1e-09 3.72, 1e-08 4.17, 1e-07 5.43, 1e-06 8.79, 1e-05 13.90, 1e-04 21.48, 1e-03 30.49, 1e-02 34.98, 1e-01 27.35, 1e+00 20.86, 1e+01 19.50
+  delta +1%, 64 sensors: best mean PSNR 41.51 dB at mu 1e-02; 1e-12 -44.50, 1e-11 -36.71, 1e-10 -28.98, 1e-09 -20.15, 1e-08 -11.50, 1e-07 -2.94, 1e-06 5.95, 1e-05 15.29, 1e-04 25.12, 1e-03 35.10, 1e-02 41.51, 1e-01 31.01, 1e+00 21.57, 1e+01 19.28
+  delta +2%, 16 sensors: best mean PSNR 32.14 dB at mu 1e-02; 1e-12 -2.92, 1e-11 -2.65, 1e-10 -2.44, 1e-09 -2.17, 1e-08 -1.72, 1e-07 -0.46, 1e-06 2.92, 1e-05 8.02, 1e-04 15.60, 1e-03 24.87, 1e-02 32.14, 1e-01 27.13, 1e+00 20.84, 1e+01 19.50
+  delta +2%, 64 sensors: best mean PSNR 37.25 dB at mu 1e-02; 1e-12 -50.43, 1e-11 -42.63, 1e-10 -34.92, 1e-09 -26.08, 1e-08 -17.43, 1e-07 -8.86, 1e-06 0.03, 1e-05 9.38, 1e-04 19.23, 1e-03 29.26, 1e-02 37.25, 1e-01 30.61, 1e+00 21.53, 1e+01 19.28
