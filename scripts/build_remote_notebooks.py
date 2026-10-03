@@ -14,9 +14,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # The commit the notebooks check out. It must contain the remote workflow (scripts/cuda_smoke.py and
-# the files it uses). A commit cannot name itself, so after this work is committed, set REF to that
-# commit's full SHA, rebuild the notebooks and commit the notebooks alone.
-REF = "0bcc79fa51e91fefa7b94564c342b0803b2bac35"
+# the files it uses). A commit cannot name itself, so REF names the commit that added the workflow;
+# the commit that records this pin changes only this file and the two generated notebooks. To run a
+# later version, set REF to its full SHA, rebuild the notebooks and commit them the same way.
+REF = "d63d754fdac185902c8424b67649424f3c488428"
 REPO_URL = "https://github.com/AdebanjiAdelowo/photoacoustic-reconstruction.git"
 
 PLATFORMS = {
@@ -65,8 +66,8 @@ import pathlib
 import time
 
 REPO_URL = "{repo_url}"
-# REF must be the full SHA of a commit that contains the remote workflow (scripts/cuda_smoke.py).
-# The value below is the pre-workflow baseline: replace it after the workflow has been committed.
+# REF is the full SHA of the commit that is checked out and run. It must contain the remote
+# workflow (scripts/cuda_smoke.py); change it in scripts/build_remote_notebooks.py, not here.
 REF = "{ref}"
 RUN_FULL = False  # True runs the gated five-seed CPU-versus-CUDA experiment after the smoke
 
