@@ -51,6 +51,7 @@ from scripts.expanded_evaluation import CKPT_DIR, SENSOR_COUNTS, TEST_PATH, TRAI
 from scripts.generate_training_data import CENTRE, GRID_SIZE, RADIUS  # noqa: E402
 from src.baselines import time_reversal_reconstruction  # noqa: E402
 from src.calibration import training_scales  # noqa: E402
+from src.device import to_numpy  # noqa: E402
 from src.evaluate import psnr, ssim  # noqa: E402
 from src.forward_model import DEFAULT_SOUND_SPEED, build_domain_and_medium, sparse_view_sensor_array  # noqa: E402
 from src.stats import bootstrap_mean_ci, paired_bootstrap_ci  # noqa: E402
@@ -97,7 +98,7 @@ def main():
             x = torch.from_numpy(tr).unsqueeze(1)
             with torch.no_grad():
                 for name, model in models.items():
-                    out[name] = model(x).squeeze(1).numpy()
+                    out[name] = to_numpy(model(x).squeeze(1))
             tik = np.zeros_like(phantoms)
             for k in SENSOR_COUNTS:
                 m = np.nonzero(n_sensors == k)[0]

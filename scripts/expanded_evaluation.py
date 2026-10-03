@@ -23,7 +23,19 @@ Outputs: report/expanded_eval_results.txt, report/expanded_eval_results.json,
 report/expanded_eval_per_image.npz (per-image PSNR/SSIM) and report/expanded_eval_noise.png.
 
     python scripts/expanded_evaluation.py
+
+The defaults above are the published protocol (CPU, data/, experiments/expanded/, report/). For a
+device comparison on another machine every location can be redirected, e.g.
+
+    python scripts/expanded_evaluation.py --device cuda --data-dir results/<RUN_ID>/data \
+        --checkpoint-dir results/<RUN_ID>/checkpoints/cuda --out-dir results/<RUN_ID>/report/cuda \
+        --reference-checkpoint none --tr-cache results/<RUN_ID>/data/tr_by_noise_level.npz
+
+--device selects where the U-Net is trained and applied; the j-Wave physics always runs on CPU.
+--tr-cache stores the time-reversal reconstructions of every noise level so that several runs score
+exactly the same physics output. See REMOTE_GPU.md.
 """
+import argparse
 import json
 import os
 import sys
@@ -41,10 +53,12 @@ from scripts.generate_training_data import CENTRE, GRID_SIZE, RADIUS  # noqa: E4
 from scripts.train import get_device, train  # noqa: E402
 from src.baselines import time_reversal_reconstruction  # noqa: E402
 from src.calibration import fit_scale, fit_scales_per_sensor_count  # noqa: E402
+from src.device import DEVICE_CHOICES, assert_jax_cpu, synchronize, to_numpy  # noqa: E402
 from src.evaluate import psnr, ssim  # noqa: E402
 from src.forward_model import build_domain_and_medium, simulate_sensor_data, sparse_view_sensor_array  # noqa: E402
 from src.phantoms import random_blob_phantom  # noqa: E402
 from src.reconstruction_net import ReconstructionUNet  # noqa: E402
+from src.run_safety import ensure_writable, write_json  # noqa: E402
 from src.stats import bootstrap_mean_ci, paired_bootstrap_ci  # noqa: E402
 
 TEST_SEED_OFFSET = 100_000
@@ -53,9 +67,12 @@ SENSOR_COUNTS = (16, 64)
 TRAIN_SEEDS = (0, 1, 2, 3, 4)
 TEST_PATH = "data/test_expanded.npz"
 CKPT_DIR = "experiments/expanded"
+REFERENCE_CHECKPOINT = "experiments/unet_checkpoint.pt"
+OUTPUT_NAMES = ("expanded_eval_results.json", "expanded_eval_per_image.npz", "expanded_eval_results.txt",
+                "expanded_eval_noise.png")
 
 
-def generate_test_set():
+def generate_test_set(test_path=TEST_PATH, data_dir="data", timing=None):
     n = N_PER_SENSOR * len(SENSOR_COUNTS)
     rng = np.random.default_rng(TEST_SEED_OFFSET)
     domain, medium = build_domain_and_medium(GRID_SIZE)
@@ -67,20 +84,26 @@ def generate_test_set():
     for i in range(n):
         n_blobs = int(rng.integers(1, 4))
         phantoms[i] = random_blob_phantom(size=GRID_SIZE, seed=int(seeds[i]), n_blobs=n_blobs)
+        t_a = time.perf_counter()
         rec, t_axis = simulate_sensor_data(phantoms[i], domain, medium, sensors[int(n_sensors[i])])
+        t_b = time.perf_counter()
         recons[i] = time_reversal_reconstruction(rec, sensors[int(n_sensors[i])], domain, medium, t_axis)
+        if timing is not None:
+            timing["forward_seconds"] = timing.get("forward_seconds", 0.0) + (t_b - t_a)
+            timing["time_reversal_seconds"] = timing.get("time_reversal_seconds", 0.0) + (time.perf_counter() - t_b)
+            timing["n_images"] = timing.get("n_images", 0) + 1
     used = set()
     for split in ("train", "val", "test"):
-        used |= set(np.load(f"data/{split}.npz")["seed"].tolist())
+        used |= set(np.load(os.path.join(data_dir, f"{split}.npz"))["seed"].tolist())
     assert not used & set(seeds.tolist()), "expanded test seeds overlap an existing split"
-    np.savez(TEST_PATH, phantom=phantoms, recon=recons, n_sensors=n_sensors, seed=seeds)
+    np.savez(test_path, phantom=phantoms, recon=recons, n_sensors=n_sensors, seed=seeds)
 
 
-def load_model(path):
+def load_model(path, device="cpu"):
     ckpt = torch.load(path, map_location="cpu", weights_only=True)
     model = ReconstructionUNet(base_features=16)
     model.load_state_dict(ckpt["model_state"])
-    return model.eval(), ckpt
+    return model.to(device).eval(), ckpt
 
 
 def summarise(values):
@@ -88,28 +111,45 @@ def summarise(values):
     return {"mean": m, "ci95": [lo, hi]}
 
 
-def main():
+def main(device_choice="cpu", data_dir="data", ckpt_dir=CKPT_DIR, out_dir="report",
+         reference_checkpoint=REFERENCE_CHECKPOINT, tr_cache=None, timing_path=None, overwrite=False,
+         train_metadata=False):
     t0 = time.time()
-    if not os.path.exists(TEST_PATH):
-        generate_test_set()
-    test = np.load(TEST_PATH)
+    device = get_device(device_choice)
+    if device.type == "cuda":
+        assert_jax_cpu()  # the U-Net may move; the physics may not
+    out_paths = [os.path.join(out_dir, name) for name in OUTPUT_NAMES]
+    for path in out_paths + ([timing_path] if timing_path else []):
+        ensure_writable(path, device=device, overwrite=overwrite)
+    timing = {"forward_clean_seconds": 0.0, "time_reversal_seconds": 0.0, "unet_inference_seconds": 0.0,
+              "metrics_seconds": 0.0, "training_seconds": 0.0, "tr_cache_used": False}
+
+    test_path = os.path.join(data_dir, os.path.basename(TEST_PATH))
+    if not os.path.exists(test_path):
+        ensure_writable(test_path, device=device)
+        generate_test_set(test_path, data_dir)
+    test = np.load(test_path)
     phantoms, n_sensors = test["phantom"], test["n_sensors"]
     print(f"[{time.time() - t0:.0f}s] test set: {len(phantoms)} images, "
           + ", ".join(f"{k} sensors: {int((n_sensors == k).sum())}" for k in SENSOR_COUNTS))
 
-    os.makedirs(CKPT_DIR, exist_ok=True)
-    device = get_device("cpu")
+    os.makedirs(ckpt_dir, exist_ok=True)
     for s in TRAIN_SEEDS:
-        path = f"{CKPT_DIR}/unet_seed{s}.pt"
+        path = f"{ckpt_dir}/unet_seed{s}.pt"
         if not os.path.exists(path):
-            train(device, seed=s, checkpoint_path=path, verbose=False)
-    models = {f"seed{s}": load_model(f"{CKPT_DIR}/unet_seed{s}.pt") for s in TRAIN_SEEDS}
-    reference = load_model("experiments/unet_checkpoint.pt")
+            history = train(device, seed=s, checkpoint_path=path, verbose=False, data_dir=data_dir,
+                            metadata_path=f"{ckpt_dir}/unet_seed{s}.meta.json" if train_metadata else None,
+                            requested_device=device_choice)
+            timing["training_seconds"] += history["timing"]["total_seconds"]
+    models = {f"seed{s}": load_model(f"{ckpt_dir}/unet_seed{s}.pt", device) for s in TRAIN_SEEDS}
+    scored = list(models.items())
+    if reference_checkpoint is not None:
+        scored.append(("reference_checkpoint", load_model(reference_checkpoint, device)))
     print(f"[{time.time() - t0:.0f}s] networks: "
           + ", ".join(f"{k} (epoch {c['epoch']}, val {c['val_loss']:.6f})" for k, (_, c) in models.items()))
 
     # --- calibration, training split only ---
-    train_split, val_split = np.load("data/train.npz"), np.load("data/val.npz")
+    train_split, val_split = (np.load(os.path.join(data_dir, f"{n}.npz")) for n in ("train", "val"))
     gain = fit_scales_per_sensor_count(train_split["recon"], train_split["phantom"], train_split["n_sensors"])
     calib = {}
     rng = np.random.default_rng(0)
@@ -128,26 +168,51 @@ def main():
     # --- reconstruct at every noise level ---
     domain, medium = build_domain_and_medium(GRID_SIZE)
     sensors = {k: sparse_view_sensor_array(k, RADIUS, CENTRE) for k in SENSOR_COUNTS}
-    clean = [simulate_sensor_data(phantoms[i], domain, medium, sensors[int(n_sensors[i])]) for i in range(len(phantoms))]
-    methods = ["tr_raw", "tr_cal"] + list(models) + ["reference_checkpoint"]
+    cached = None
+    if tr_cache and os.path.exists(tr_cache):
+        cached = np.load(tr_cache)
+        assert np.array_equal(cached["seed"], test["seed"]), "time-reversal cache belongs to another test set"
+        timing["tr_cache_used"] = True
+    else:
+        t_a = time.perf_counter()
+        clean = [simulate_sensor_data(phantoms[i], domain, medium, sensors[int(n_sensors[i])]) for i in range(len(phantoms))]
+        timing["forward_clean_seconds"] = time.perf_counter() - t_a
+    methods = ["tr_raw", "tr_cal"] + [name for name, _ in scored]
     per_image = {}  # (level, method, metric) -> (N,)
+    tr_by_level = {}
     for label, rel_std in NOISE_LEVELS:
-        noise_rng = np.random.default_rng(NOISE_SEED + int(round(rel_std * 100000)))
-        tr = np.zeros_like(phantoms)
-        for i, (rec, t_axis) in enumerate(clean):
-            noisy = add_sensor_noise(rec, rel_std, noise_rng)
-            tr[i] = time_reversal_reconstruction(noisy, sensors[int(n_sensors[i])], domain, medium, t_axis)
+        if cached is not None:
+            tr = cached[label]
+        else:
+            t_a = time.perf_counter()
+            noise_rng = np.random.default_rng(NOISE_SEED + int(round(rel_std * 100000)))
+            tr = np.zeros_like(phantoms)
+            for i, (rec, t_axis) in enumerate(clean):
+                noisy = add_sensor_noise(rec, rel_std, noise_rng)
+                tr[i] = time_reversal_reconstruction(noisy, sensors[int(n_sensors[i])], domain, medium, t_axis)
+            timing["time_reversal_seconds"] += time.perf_counter() - t_a
+        tr_by_level[label] = tr
         if rel_std == 0.0:
             assert np.array_equal(tr, test["recon"]), "noiseless reconstruction differs from the stored test set"
         outputs = {"tr_raw": tr, "tr_cal": tr * gains}
-        x = torch.from_numpy(tr).unsqueeze(1)
+        x = torch.from_numpy(tr).unsqueeze(1).to(device)
+        synchronize(device)
+        t_a = time.perf_counter()
         with torch.no_grad():
-            for name, (model, _) in list(models.items()) + [("reference_checkpoint", reference)]:
-                outputs[name] = model(x).squeeze(1).numpy()
+            for name, (model, _) in scored:
+                outputs[name] = to_numpy(model(x).squeeze(1))
+        synchronize(device)
+        timing["unet_inference_seconds"] += time.perf_counter() - t_a
+        t_a = time.perf_counter()
         for name in methods:
             per_image[(label, name, "psnr")] = np.array([psnr(outputs[name][i], phantoms[i]) for i in range(len(phantoms))])
             per_image[(label, name, "ssim")] = np.array([ssim(outputs[name][i], phantoms[i]) for i in range(len(phantoms))])
+        timing["metrics_seconds"] += time.perf_counter() - t_a
         print(f"[{time.time() - t0:.0f}s] noise level {label} done")
+    if tr_cache and cached is None:
+        ensure_writable(tr_cache, device=device)
+        os.makedirs(os.path.dirname(tr_cache) or ".", exist_ok=True)
+        np.savez_compressed(tr_cache, seed=test["seed"], **tr_by_level)
 
     seed_names = list(models)
     for label, _ in NOISE_LEVELS:
@@ -175,7 +240,8 @@ def main():
                              "across_training_seeds": {"per_seed_means": seed_means.tolist(),
                                                        "sd": float(seed_means.std(ddof=1)),
                                                        "min": float(seed_means.min()), "max": float(seed_means.max())}},
-                    "reference_checkpoint": summarise(g("reference_checkpoint")),
+                    **({"reference_checkpoint": summarise(g("reference_checkpoint"))}
+                       if reference_checkpoint is not None else {}),
                     "unet_minus_tr_cal": dict(zip(("mean", "ci95_lo", "ci95_hi"),
                                                   paired_bootstrap_ci(g("unet_mean_over_seeds"), g("tr_cal")))),
                     "unet_minus_tr_cal_per_seed": [float((g(s) - g("tr_cal")).mean()) for s in seed_names],
@@ -188,21 +254,28 @@ def main():
             level["by_sensors"][str(k)] = entry
         results["levels"].append(level)
 
-    os.makedirs("report", exist_ok=True)
-    with open("report/expanded_eval_results.json", "w") as f:
+    os.makedirs(out_dir, exist_ok=True)
+    with open(out_paths[0], "w") as f:
         json.dump(results, f, indent=2)
-    np.savez_compressed("report/expanded_eval_per_image.npz", n_sensors=n_sensors, seed=test["seed"],
+    np.savez_compressed(out_paths[1], n_sensors=n_sensors, seed=test["seed"],
                         **{f"{lvl}__{name}__{met}": v for (lvl, name, met), v in per_image.items()})
-    write_text(results)
-    plot(results)
-    print(f"[{time.time() - t0:.0f}s] wrote report/expanded_eval_*")
+    write_text(results, out_paths[2])
+    plot(results, out_paths[3])
+    timing["end_to_end_seconds"] = time.time() - t0
+    timing["device"] = str(device)
+    timing["note"] = ("U-Net inference is synchronised on accelerators; forward and time-reversal "
+                      "times are j-Wave on CPU and include JAX compilation")
+    if timing_path:
+        write_json(timing_path, timing, device=device, overwrite=overwrite)
+    print(f"[{time.time() - t0:.0f}s] wrote {out_dir}/expanded_eval_*")
+    return timing
 
 
 def fmt(s, digits):
     return f"{s['mean']:.{digits}f} [{s['ci95'][0]:.{digits}f}, {s['ci95'][1]:.{digits}f}]"
 
 
-def write_text(r):
+def write_text(r, path="report/expanded_eval_results.txt"):
     L = ["Expanded evaluation (scripts/expanded_evaluation.py)", "", r["protocol"], "",
          "Calibration gains (training split; bootstrap over training images):"]
     for k, c in r["calibration"].items():
@@ -219,18 +292,19 @@ def write_text(r):
                 L.append(f"  {k} sensors, {metric.upper()} (n={e['n_images']}): raw TR {fmt(x['tr_raw'], d)} | "
                          f"cal TR {fmt(x['tr_cal'], d)} | U-Net {fmt(x['unet'], d)} "
                          f"(5 networks: {u['min']:.{d}f}-{u['max']:.{d}f}, sd {u['sd']:.{d}f}) | "
-                         f"U-Net - cal TR {diff['mean']:.{d}f} [{diff['ci95_lo']:.{d}f}, {diff['ci95_hi']:.{d}f}] | "
-                         f"original checkpoint {fmt(x['reference_checkpoint'], d)}")
+                         f"U-Net - cal TR {diff['mean']:.{d}f} [{diff['ci95_lo']:.{d}f}, {diff['ci95_hi']:.{d}f}]"
+                         + (f" | original checkpoint {fmt(x['reference_checkpoint'], d)}"
+                            if "reference_checkpoint" in x else ""))
                 if "change_from_noiseless" in x:
                     c = x["change_from_noiseless"]
                     L.append("      change from noiseless: " + ", ".join(
                         f"{n} {v['mean']:+.{d}f} [{v['ci95_lo']:+.{d}f}, {v['ci95_hi']:+.{d}f}]" for n, v in c.items()))
-    with open("report/expanded_eval_results.txt", "w") as f:
+    with open(path, "w") as f:
         f.write("\n".join(L) + "\n")
     print("\n".join(L[-60:]))
 
 
-def plot(r):
+def plot(r, path="report/expanded_eval_noise.png"):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -264,8 +338,23 @@ def plot(r):
     fig.suptitle("400 held-out test images (200 per sensor count); error bars: 95% bootstrap CI over images",
                  fontsize=10)
     fig.tight_layout()
-    fig.savefig("report/expanded_eval_noise.png", dpi=130)
+    fig.savefig(path, dpi=130)
+    plt.close(fig)
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", choices=DEVICE_CHOICES, default="cpu",
+                        help="device for U-Net training and inference (default cpu, the published protocol)")
+    parser.add_argument("--data-dir", default="data")
+    parser.add_argument("--checkpoint-dir", default=CKPT_DIR)
+    parser.add_argument("--out-dir", default="report")
+    parser.add_argument("--reference-checkpoint", default=REFERENCE_CHECKPOINT,
+                        help="original checkpoint scored for continuity; 'none' to skip it")
+    parser.add_argument("--tr-cache", default=None)
+    parser.add_argument("--timing", default=None, help="write stage timings to this JSON file")
+    parser.add_argument("--overwrite", action="store_true")
+    args = parser.parse_args()
+    main(args.device, args.data_dir, args.checkpoint_dir, args.out_dir,
+         None if args.reference_checkpoint.lower() == "none" else args.reference_checkpoint,
+         args.tr_cache, args.timing, args.overwrite)

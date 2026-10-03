@@ -21,6 +21,7 @@ import torch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from src.device import to_numpy
 from src.evaluate import psnr
 from src.reconstruction_net import ReconstructionUNet
 
@@ -34,7 +35,7 @@ def main():
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
     with torch.no_grad():
-        recons_learned = model(torch.from_numpy(recons_tr).unsqueeze(1).float()).squeeze(1).numpy()
+        recons_learned = to_numpy(model(torch.from_numpy(recons_tr).unsqueeze(1).float()).squeeze(1))
 
     n_show = min(4, len(phantoms))
     err_tr = np.abs(recons_tr[:n_show] - phantoms[:n_show])

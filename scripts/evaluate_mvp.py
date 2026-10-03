@@ -1,7 +1,13 @@
 """Stage 7 — MVP evaluation: time-reversal baseline vs. learned refinement, on the held-out test
 split, at both MVP sparsity settings. Produces genuine metrics and a real comparison figure —
 nothing here is invented or adjusted by hand.
+
+Run: python scripts/evaluate_mvp.py [--device auto|cpu|mps|cuda] [--checkpoint PATH] [--data-dir DIR]
+                                    [--out-dir DIR] [--note TEXT] [--overwrite]
+The defaults score experiments/unet_checkpoint.pt on data/test.npz and write to report/, as before.
+--note adds a provenance line to the results file, for networks other than the original checkpoint.
 """
+import argparse
 import os
 import sys
 
@@ -16,8 +22,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from skimage.metrics import structural_similarity as sk_ssim_full
 
+from src.device import DEVICE_CHOICES, resolve_device, to_numpy
 from src.evaluate import psnr, ssim
 from src.reconstruction_net import ReconstructionUNet
+from src.run_safety import ensure_writable
 
 
 def diagnose_ssim_disagreement(gt, tr, learned, structure_threshold=0.05):
@@ -39,21 +47,27 @@ def diagnose_ssim_disagreement(gt, tr, learned, structure_threshold=0.05):
     }
 
 
-def main():
-    d = np.load("data/test.npz")
+def main(device_choice="auto", checkpoint_path="experiments/unet_checkpoint.pt", data_dir="data",
+         out_dir="report", note=None, overwrite=False):
+    device = resolve_device(device_choice)
+    results_path = os.path.join(out_dir, "mvp_results.txt")
+    figure_path = os.path.join(out_dir, "mvp_comparison.png")
+    for path in (results_path, figure_path):
+        ensure_writable(path, device=device, overwrite=overwrite)
+
+    d = np.load(os.path.join(data_dir, "test.npz"))
     phantoms = d["phantom"]
     recons_tr = d["recon"]  # time-reversal baseline, already computed in Stage 5
     n_sensors = d["n_sensors"]
 
-    device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
-    checkpoint = torch.load("experiments/unet_checkpoint.pt", map_location=device, weights_only=True)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
     model = ReconstructionUNet(base_features=16).to(device)
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
 
     x = torch.from_numpy(recons_tr).unsqueeze(1).float().to(device)
     with torch.no_grad():
-        recons_learned = model(x).squeeze(1).cpu().numpy()
+        recons_learned = to_numpy(model(x).squeeze(1))
 
     print(f"Checkpoint from epoch {checkpoint['epoch']}, val_loss {checkpoint['val_loss']:.6f}")
     print(f"Test set: {len(phantoms)} examples, n_sensors distribution: "
@@ -95,9 +109,11 @@ def main():
     diag = diagnose_ssim_disagreement(phantoms[0], recons_tr[0], recons_learned[0])
 
     # Save genuine numeric results, not just print them.
-    os.makedirs("report", exist_ok=True)
-    with open("report/mvp_results.txt", "w") as f:
+    os.makedirs(out_dir, exist_ok=True)
+    with open(results_path, "w") as f:
         f.write("Evaluation Results (PSNR/SSIM, time-reversal vs. U-Net)\n")
+        if note:
+            f.write(f"NOTE: {note}\n")
         f.write(f"Checkpoint: epoch {checkpoint['epoch']}, val_loss {checkpoint['val_loss']:.6f}\n")
         f.write(f"Test set size: {len(phantoms)}\n\n")
         f.write(f"{'sparsity':<10}{'n':<4}{'TR PSNR':<12}{'TR SSIM':<12}{'Learned PSNR':<14}{'Learned SSIM':<14}\n")
@@ -134,9 +150,18 @@ def main():
         axes[2, i].set_title(f"learned refinement\nPSNR={psnr(recons_learned[i], phantoms[i]):.2f}")
         axes[2, i].axis("off")
     plt.tight_layout()
-    plt.savefig("report/mvp_comparison.png", dpi=120)
-    print("\nSaved report/mvp_results.txt and report/mvp_comparison.png")
+    plt.savefig(figure_path, dpi=120)
+    plt.close(fig)
+    print(f"\nSaved {results_path} and {figure_path}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", choices=DEVICE_CHOICES, default="auto")
+    parser.add_argument("--checkpoint", default="experiments/unet_checkpoint.pt")
+    parser.add_argument("--data-dir", default="data")
+    parser.add_argument("--out-dir", default="report")
+    parser.add_argument("--note", default=None)
+    parser.add_argument("--overwrite", action="store_true")
+    args = parser.parse_args()
+    main(args.device, args.checkpoint, args.data_dir, args.out_dir, args.note, args.overwrite)

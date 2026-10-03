@@ -12,7 +12,12 @@ protocol.
 Output: data/{split}.npz containing arrays `phantom` (N, size, size), `recon` (N, size, size)
 [time-reversal baseline output], `n_sensors` (N,) [which sparsity setting each example used],
 `seed` (N,) [phantom seed, for traceability]. Not committed to git (data/*.npz is gitignored).
+
+Run: python scripts/generate_training_data.py [--data-dir DIR] [--overwrite]
+The default writes to data/ as before. Remote runs pass --data-dir results/<RUN_ID>/data; with
+PHOTOACOUSTIC_PROTECT_HISTORICAL=1 a write to data/ is refused (see REMOTE_GPU.md).
 """
+import argparse
 import os
 import sys
 import time
@@ -24,6 +29,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.baselines import time_reversal_reconstruction
 from src.forward_model import build_domain_and_medium, simulate_sensor_data, sparse_view_sensor_array
 from src.phantoms import random_blob_phantom
+from src.run_safety import ensure_writable
 
 GRID_SIZE = 64
 CENTRE = (GRID_SIZE // 2, GRID_SIZE // 2)
@@ -40,7 +46,9 @@ SPLITS = {
 SPLIT_SEED_OFFSETS = {"train": 0, "val": 10_000, "test": 20_000}
 
 
-def generate_split(split_name: str, n_examples: int):
+def generate_split(split_name: str, n_examples: int, timing=None):
+    """`timing`, if given, accumulates the seconds spent in the forward simulation and in time
+    reversal (the first call of each includes JAX compilation)."""
     rng = np.random.default_rng(SPLIT_SEED_OFFSETS[split_name])
     domain, medium = build_domain_and_medium(GRID_SIZE)
 
@@ -57,8 +65,14 @@ def generate_split(split_name: str, n_examples: int):
 
         phantom = random_blob_phantom(size=GRID_SIZE, seed=phantom_seed, n_blobs=n_blobs)
         sensor_pos = sparse_view_sensor_array(n_sensors, RADIUS, CENTRE)
+        t_a = time.perf_counter()
         recording, time_axis = simulate_sensor_data(phantom, domain, medium, sensor_pos)
+        t_b = time.perf_counter()
         recon = time_reversal_reconstruction(recording, sensor_pos, domain, medium, time_axis)
+        if timing is not None:
+            timing["forward_seconds"] = timing.get("forward_seconds", 0.0) + (t_b - t_a)
+            timing["time_reversal_seconds"] = timing.get("time_reversal_seconds", 0.0) + (time.perf_counter() - t_b)
+            timing["n_images"] = timing.get("n_images", 0) + 1
 
         phantoms[i] = phantom
         recons[i] = recon
@@ -71,14 +85,15 @@ def generate_split(split_name: str, n_examples: int):
     return phantoms, recons, n_sensors_used, seeds_used
 
 
-def main():
-    import os
-    os.makedirs("data", exist_ok=True)
+def main(data_dir="data", overwrite=False, timing=None):
+    os.makedirs(data_dir, exist_ok=True)
+    for split_name in SPLITS:
+        ensure_writable(os.path.join(data_dir, f"{split_name}.npz"), overwrite=overwrite)
 
     for split_name, n_examples in SPLITS.items():
         print(f"Generating split '{split_name}' ({n_examples} examples)...")
-        phantoms, recons, n_sensors_used, seeds_used = generate_split(split_name, n_examples)
-        out_path = f"data/{split_name}.npz"
+        phantoms, recons, n_sensors_used, seeds_used = generate_split(split_name, n_examples, timing)
+        out_path = os.path.join(data_dir, f"{split_name}.npz")
         np.savez(out_path, phantom=phantoms, recon=recons,
                   n_sensors=n_sensors_used, seed=seeds_used)
         print(f"  saved {out_path}: phantom {phantoms.shape}, recon {recons.shape}")
@@ -86,7 +101,7 @@ def main():
     # Leakage check: verify no seed appears in more than one split.
     all_seeds = []
     for split_name in SPLITS:
-        d = np.load(f"data/{split_name}.npz")
+        d = np.load(os.path.join(data_dir, f"{split_name}.npz"))
         all_seeds.append(set(d["seed"].tolist()))
     for i, s1 in enumerate(list(SPLITS.keys())):
         for s2 in list(SPLITS.keys())[i + 1:]:
@@ -96,4 +111,9 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data-dir", default="data")
+    parser.add_argument("--overwrite", action="store_true",
+                        help="allow replacing existing splits outside the historical data/ directory")
+    args = parser.parse_args()
+    main(data_dir=args.data_dir, overwrite=args.overwrite)

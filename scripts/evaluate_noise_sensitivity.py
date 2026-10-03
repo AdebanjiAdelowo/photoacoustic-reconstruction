@@ -34,6 +34,7 @@ as in training; calibration affects only the TR baseline row.
 Outputs: report/noise_sensitivity_results.txt (human-readable table) and
 report/noise_sensitivity_results.json (machine-readable), plus console output.
 """
+import argparse
 import json
 import os
 import sys
@@ -45,9 +46,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.baselines import time_reversal_reconstruction
 from src.calibration import training_scales
+from src.device import DEVICE_CHOICES, resolve_device, to_numpy
 from src.evaluate import psnr, ssim
 from src.forward_model import build_domain_and_medium, simulate_sensor_data, sparse_view_sensor_array
 from src.reconstruction_net import ReconstructionUNet
+from src.run_safety import ensure_writable
 
 GRID_SIZE = 64
 CENTRE = (GRID_SIZE // 2, GRID_SIZE // 2)
@@ -82,19 +85,25 @@ def add_sensor_noise(recording: np.ndarray, relative_std: float, rng: np.random.
     return recording + noise
 
 
-def main():
-    d = np.load("data/test.npz")
+def main(device_choice="auto", checkpoint_path="experiments/unet_checkpoint.pt", data_dir="data",
+         out_dir="report", overwrite=False):
+    device = resolve_device(device_choice)
+    json_path = os.path.join(out_dir, "noise_sensitivity_results.json")
+    txt = os.path.join(out_dir, "noise_sensitivity_results.txt")
+    for path in (json_path, txt):
+        ensure_writable(path, device=device, overwrite=overwrite)
+
+    d = np.load(os.path.join(data_dir, "test.npz"))
     phantoms = d["phantom"]
     n_sensors_arr = d["n_sensors"]
     n_examples = len(phantoms)
 
-    device = torch.device("mps") if torch.backends.mps.is_available() else torch.device("cpu")
-    checkpoint = torch.load("experiments/unet_checkpoint.pt", map_location=device, weights_only=True)
+    checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=True)
     model = ReconstructionUNet(base_features=16).to(device)
     model.load_state_dict(checkpoint["model_state"])
     model.eval()
 
-    tr_gain = training_scales("data/train.npz")  # per sensor count, noiseless training split only
+    tr_gain = training_scales(os.path.join(data_dir, "train.npz"))  # per sensor count, noiseless training split only
     gains = np.array([tr_gain[int(k)] for k in n_sensors_arr])
 
     domain, medium = build_domain_and_medium(GRID_SIZE)
@@ -141,7 +150,7 @@ def main():
 
         x = torch.from_numpy(recons_tr).unsqueeze(1).float().to(device)
         with torch.no_grad():
-            recons_unet = model(x).squeeze(1).cpu().numpy()
+            recons_unet = to_numpy(model(x).squeeze(1))
 
         tr_psnrs = [psnr(recons_tr[i], phantoms[i]) for i in range(n_examples)]
         tr_ssims = [ssim(recons_tr[i], phantoms[i]) for i in range(n_examples)]
@@ -201,9 +210,9 @@ def main():
     print("(compare per-sparsity rows against report/mvp_results.txt: 16-sensor and 64-sensor "
           "TR/UNet PSNR/SSIM should match exactly)")
 
-    os.makedirs("report", exist_ok=True)
+    os.makedirs(out_dir, exist_ok=True)
 
-    with open("report/noise_sensitivity_results.json", "w") as f:
+    with open(json_path, "w") as f:
         json.dump({
             "checkpoint_epoch": checkpoint["epoch"],
             "checkpoint_val_loss": float(checkpoint["val_loss"]),
@@ -217,7 +226,7 @@ def main():
             "levels": per_level_rows,
         }, f, indent=2)
 
-    with open("report/noise_sensitivity_results.txt", "w") as f:
+    with open(txt, "w") as f:
         f.write("Noise-robustness sensitivity analysis (real, measured -- see "
                 "scripts/evaluate_noise_sensitivity.py)\n")
         f.write(f"Checkpoint: epoch {checkpoint['epoch']}, val_loss {checkpoint['val_loss']:.6f} "
@@ -245,14 +254,20 @@ def main():
                         f"{sub['trcal_psnr']:<12.3f}{sub['trcal_ssim']:<12.4f}\n")
 
     # strip the padding left after the last column of each table row
-    txt = "report/noise_sensitivity_results.txt"
     with open(txt) as f:
         stripped = "\n".join(line.rstrip() for line in f.read().splitlines()) + "\n"
     with open(txt, "w") as f:
         f.write(stripped)
 
-    print("\nSaved report/noise_sensitivity_results.txt and report/noise_sensitivity_results.json")
+    print(f"\nSaved {txt} and {json_path}")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--device", choices=DEVICE_CHOICES, default="auto")
+    parser.add_argument("--checkpoint", default="experiments/unet_checkpoint.pt")
+    parser.add_argument("--data-dir", default="data")
+    parser.add_argument("--out-dir", default="report")
+    parser.add_argument("--overwrite", action="store_true")
+    args = parser.parse_args()
+    main(args.device, args.checkpoint, args.data_dir, args.out_dir, args.overwrite)

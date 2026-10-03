@@ -361,7 +361,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    42 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov
+├── tests/                    91 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
 └── report/                   evaluation figures and results
 ```
 
@@ -374,6 +374,9 @@ CPU; no GPU is required.
 ```bash
 pip install -r requirements.txt
 ```
+
+The U-Net can also be trained on an NVIDIA GPU on Google Colab or Kaggle, with the physics kept on
+CPU; see [REMOTE_GPU.md](REMOTE_GPU.md).
 
 ## Usage
 
@@ -427,7 +430,7 @@ run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-42 tests cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+91 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -438,7 +441,8 @@ simulation, adjoint identity, gradient against finite differences, normal equati
 behaviour), and the evaluation protocol (disjoint seed ranges for every split, the 200/200 sensor
 allocation, calibration gains that match a training-only fit, and a Tikhonov weight that is the
 argmax of the training scores). The Tikhonov gradient is checked by central differences at several
-random points, weights and step sizes.
+random points, weights and step sizes. The other 49 cover device selection, protection of the
+committed outputs, checkpoint portability and the remote GPU launchers.
 
 ## Limitations
 
