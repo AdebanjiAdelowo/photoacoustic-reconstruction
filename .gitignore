@@ -11,3 +11,4 @@ experiments/outputs/
 *.pth
 .DS_Store
 results/
+remote_runs/**/*.zip
