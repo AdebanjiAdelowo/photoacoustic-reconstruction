@@ -1,0 +1,1470 @@
+{
+  "arm_a": "cpu",
+  "arm_b": "cuda",
+  "networks": [
+    "seed0",
+    "seed1",
+    "seed2",
+    "seed3",
+    "seed4"
+  ],
+  "n_images": 400,
+  "time_reversal_identical_in_both_arms": true,
+  "levels": [
+    {
+      "label": "noiseless",
+      "by_sensors": {
+        "16": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                32.86334989925248,
+                30.910059025859436,
+                32.68740954114122,
+                31.585005594601498,
+                31.03583782258707
+              ],
+              "mean_over_seeds": 31.816332376688344,
+              "sd_over_seeds": 0.9136515110399962,
+              "tr_cal_mean": 26.944074677467835,
+              "unet_minus_tr_cal": {
+                "mean": 4.872257699220513,
+                "ci95_lo": 4.52480748715353,
+                "ci95_hi": 5.204919163914313
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                32.81763951545898,
+                30.83609141701325,
+                33.0052439601877,
+                31.53233746424678,
+                31.008294149362097
+              ],
+              "mean_over_seeds": 31.83992130125376,
+              "sd_over_seeds": 1.0133848946549375,
+              "tr_cal_mean": 26.944074677467835,
+              "unet_minus_tr_cal": {
+                "mean": 4.895846623785929,
+                "ci95_lo": 4.5449495963634465,
+                "ci95_hi": 5.22852719400937
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                -0.045710383793505116,
+                -0.07396760884618558,
+                0.317834419046477,
+                -0.052668130354717846,
+                -0.02754367322497231
+              ],
+              "max_abs_per_seed_mean_difference": 0.317834419046477,
+              "mean_over_seeds_difference": {
+                "mean": 0.02358892456541609,
+                "ci95_lo": -0.012624815257954855,
+                "ci95_hi": 0.0588326209577378
+              },
+              "gain_over_tr_cal_difference": 0.02358892456541639
+            },
+            "published_context": {
+              "published_mean": 31.843065412028327,
+              "published_ci95": [
+                31.47866204940671,
+                32.208548579568145
+              ],
+              "published_seed_min": 30.92575747751296,
+              "published_seed_max": 32.83563071910751,
+              "published_seed_sd": 0.9223159385011966,
+              "published_gain_over_tr_cal": 4.898990829175674,
+              "cpu_minus_published_mean": -0.026733035339983502,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.0031441107745671104,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.6677178283994286,
+                0.6043976242499126,
+                0.7947612230248242,
+                0.6367762756437197,
+                0.6530888335922895
+              ],
+              "mean_over_seeds": 0.6713483569820349,
+              "sd_over_seeds": 0.0728953974173548,
+              "tr_cal_mean": 0.3294022302454256,
+              "unet_minus_tr_cal": {
+                "mean": 0.34194612673660935,
+                "ci95_lo": 0.32239380927915745,
+                "ci95_hi": 0.36142643666607105
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.6691333909712985,
+                0.5975064072897055,
+                0.7970787347743433,
+                0.6353981143594405,
+                0.6525818893927535
+              ],
+              "mean_over_seeds": 0.6703397073575083,
+              "sd_over_seeds": 0.07567228833705818,
+              "tr_cal_mean": 0.3294022302454256,
+              "unet_minus_tr_cal": {
+                "mean": 0.34093747711208267,
+                "ci95_lo": 0.32128513310904366,
+                "ci95_hi": 0.3610898334183663
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.0014155625718699216,
+                -0.006891216960207114,
+                0.0023175117495191078,
+                -0.0013781612842792557,
+                -0.000506944199536008
+              ],
+              "max_abs_per_seed_mean_difference": 0.006891216960207114,
+              "mean_over_seeds_difference": {
+                "mean": -0.0010086496245266551,
+                "ci95_lo": -0.002670864483918545,
+                "ci95_hi": 0.0006985519489173569
+              },
+              "gain_over_tr_cal_difference": -0.0010086496245266807
+            },
+            "published_context": {
+              "published_mean": 0.6680741372274339,
+              "published_ci95": [
+                0.6504826253201649,
+                0.6854876371631617
+              ],
+              "published_seed_min": 0.6070247223168074,
+              "published_seed_max": 0.7846248576079095,
+              "published_seed_sd": 0.06966896912962414,
+              "published_gain_over_tr_cal": 0.338671925360176,
+              "cpu_minus_published_mean": 0.00327421975460096,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.0022655701300743347,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        },
+        "64": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                33.26487970165535,
+                31.593322502214196,
+                33.26463529809188,
+                32.83848398523769,
+                31.336456028274597
+              ],
+              "mean_over_seeds": 32.45955550309475,
+              "sd_over_seeds": 0.9289778492831362,
+              "tr_cal_mean": 29.26748161767118,
+              "unet_minus_tr_cal": {
+                "mean": 3.192073885423564,
+                "ci95_lo": 2.8183141885866654,
+                "ci95_hi": 3.563196788415994
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                33.50692996285494,
+                31.119157461719197,
+                33.739493839630256,
+                32.90583729448654,
+                31.317530382053725
+              ],
+              "mean_over_seeds": 32.51778978814893,
+              "sd_over_seeds": 1.226614748836449,
+              "tr_cal_mean": 29.26748161767118,
+              "unet_minus_tr_cal": {
+                "mean": 3.250308170477751,
+                "ci95_lo": 2.8723295066570365,
+                "ci95_hi": 3.625801447726373
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.24205026119958717,
+                -0.47416504049499864,
+                0.47485854153837437,
+                0.06735330924885119,
+                -0.018925646220871783
+              ],
+              "max_abs_per_seed_mean_difference": 0.47485854153837437,
+              "mean_over_seeds_difference": {
+                "mean": 0.0582342850541872,
+                "ci95_lo": 0.022062783366645036,
+                "ci95_hi": 0.09374353863527951
+              },
+              "gain_over_tr_cal_difference": 0.05823428505418704
+            },
+            "published_context": {
+              "published_mean": 32.47629662718887,
+              "published_ci95": [
+                32.087286815657855,
+                32.8811696955166
+              ],
+              "published_seed_min": 31.19341197551194,
+              "published_seed_max": 33.56722009923723,
+              "published_seed_sd": 1.139572698953432,
+              "published_gain_over_tr_cal": 3.208815000605138,
+              "cpu_minus_published_mean": -0.01674112409412487,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.04149316096005862,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.6553931802585206,
+                0.6494117533724202,
+                0.8592751786458096,
+                0.7312104250029791,
+                0.6502920522742446
+              ],
+              "mean_over_seeds": 0.7091165179107948,
+              "sd_over_seeds": 0.09075645679349768,
+              "tr_cal_mean": 0.4675652256745649,
+              "unet_minus_tr_cal": {
+                "mean": 0.24155129223622993,
+                "ci95_lo": 0.21912262983262115,
+                "ci95_hi": 0.26389040733285984
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.6633543258950786,
+                0.6355837251889369,
+                0.864644868299527,
+                0.7201682492563836,
+                0.6500622761685051
+              ],
+              "mean_over_seeds": 0.7067626889616863,
+              "sd_over_seeds": 0.09390441853033701,
+              "tr_cal_mean": 0.4675652256745649,
+              "unet_minus_tr_cal": {
+                "mean": 0.23919746328712144,
+                "ci95_lo": 0.2162504479741334,
+                "ci95_hi": 0.2618400245379227
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.007961145636558031,
+                -0.013828028183483276,
+                0.005369689653717424,
+                -0.011042175746595495,
+                -0.0002297761057394876
+              ],
+              "max_abs_per_seed_mean_difference": 0.013828028183483276,
+              "mean_over_seeds_difference": {
+                "mean": -0.0023538289491085145,
+                "ci95_lo": -0.004797933992467267,
+                "ci95_hi": 0.0002026275038122905
+              },
+              "gain_over_tr_cal_difference": -0.0023538289491084885
+            },
+            "published_context": {
+              "published_mean": 0.7090866348823323,
+              "published_ci95": [
+                0.6935516787134002,
+                0.7247956552600221
+              ],
+              "published_seed_min": 0.6497500380868805,
+              "published_seed_max": 0.8570078846694323,
+              "published_seed_sd": 0.08733585655625822,
+              "published_gain_over_tr_cal": 0.24152141004384156,
+              "cpu_minus_published_mean": 2.9883028462518446e-05,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.002323945920645998,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "low",
+      "by_sensors": {
+        "16": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                32.858414804083516,
+                30.904479427648948,
+                32.68293790411371,
+                31.57616884178903,
+                31.03366756692355
+              ],
+              "mean_over_seeds": 31.81113370891175,
+              "sd_over_seeds": 0.9135814582630394,
+              "tr_cal_mean": 26.942000470173376,
+              "unet_minus_tr_cal": {
+                "mean": 4.869133238738376,
+                "ci95_lo": 4.521314680519377,
+                "ci95_hi": 5.201692398495323
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                32.813836462500355,
+                30.829354855773772,
+                33.000730009874864,
+                31.523303226698182,
+                31.005887477202858
+              ],
+              "mean_over_seeds": 31.834622406410006,
+              "sd_over_seeds": 1.0140206079525775,
+              "tr_cal_mean": 26.942000470173376,
+              "unet_minus_tr_cal": {
+                "mean": 4.89262193623663,
+                "ci95_lo": 4.542260748056645,
+                "ci95_hi": 5.22371371223017
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                -0.04457834158316132,
+                -0.0751245718751754,
+                0.317792105761157,
+                -0.052865615090848195,
+                -0.027780089720693013
+              ],
+              "max_abs_per_seed_mean_difference": 0.317792105761157,
+              "mean_over_seeds_difference": {
+                "mean": 0.023488697498252175,
+                "ci95_lo": -0.012654017788601651,
+                "ci95_hi": 0.058570132078742086
+              },
+              "gain_over_tr_cal_difference": 0.02348869749825333
+            },
+            "published_context": {
+              "published_mean": 31.83825133049096,
+              "published_ci95": [
+                31.47422056214254,
+                32.20285953698765
+              ],
+              "published_seed_min": 30.918615385233835,
+              "published_seed_max": 32.83316833596213,
+              "published_seed_sd": 0.9235065267545174,
+              "published_gain_over_tr_cal": 4.896250989981869,
+              "cpu_minus_published_mean": -0.027117621579208162,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.0036289240809530554,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.6675541690965261,
+                0.6037908887935184,
+                0.7945038320102603,
+                0.6362562666303946,
+                0.6529413683916253
+              ],
+              "mean_over_seeds": 0.671009304984465,
+              "sd_over_seeds": 0.0729989309033199,
+              "tr_cal_mean": 0.3292590871062944,
+              "unet_minus_tr_cal": {
+                "mean": 0.34175021787817045,
+                "ci95_lo": 0.32219855360041927,
+                "ci95_hi": 0.3612420023872116
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.669016906997226,
+                0.5969467386617735,
+                0.7968006107465274,
+                0.6347780128708596,
+                0.6524327521110856
+              ],
+              "mean_over_seeds": 0.6699950042774944,
+              "sd_over_seeds": 0.07577159230316032,
+              "tr_cal_mean": 0.3292590871062944,
+              "unet_minus_tr_cal": {
+                "mean": 0.34073591717120005,
+                "ci95_lo": 0.3211252929052425,
+                "ci95_hi": 0.3608790771262801
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.0014627379006999508,
+                -0.006844150131744886,
+                0.002296778736267102,
+                -0.001478253759535031,
+                -0.0005086162805396643
+              ],
+              "max_abs_per_seed_mean_difference": 0.006844150131744886,
+              "mean_over_seeds_difference": {
+                "mean": -0.0010143007069704773,
+                "ci95_lo": -0.002666313418930081,
+                "ci95_hi": 0.0006933880995012891
+              },
+              "gain_over_tr_cal_difference": -0.0010143007069703946
+            },
+            "published_context": {
+              "published_mean": 0.6677570569520713,
+              "published_ci95": [
+                0.6501827051671935,
+                0.6851485803678926
+              ],
+              "published_seed_min": 0.6064305779352579,
+              "published_seed_max": 0.784387905923365,
+              "published_seed_sd": 0.06978368842781474,
+              "published_gain_over_tr_cal": 0.3384979888509976,
+              "cpu_minus_published_mean": 0.0032522480323936565,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.0022379473254230398,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        },
+        "64": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                33.263466722180574,
+                31.58707854087181,
+                33.26224648773371,
+                32.83563890912413,
+                31.336018867038064
+              ],
+              "mean_over_seeds": 32.45688990538966,
+              "sd_over_seeds": 0.9294541258716182,
+              "tr_cal_mean": 29.26646000717662,
+              "unet_minus_tr_cal": {
+                "mean": 3.1904298982130386,
+                "ci95_lo": 2.8169463667910604,
+                "ci95_hi": 3.5610676436122985
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                33.50539659797304,
+                31.112111948233796,
+                33.7383531871302,
+                32.90279044945878,
+                31.317172170742552
+              ],
+              "mean_over_seeds": 32.515164870707665,
+              "sd_over_seeds": 1.2278788756275867,
+              "tr_cal_mean": 29.26646000717662,
+              "unet_minus_tr_cal": {
+                "mean": 3.248704863531052,
+                "ci95_lo": 2.870804946633595,
+                "ci95_hi": 3.62417077532842
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.24192987579246505,
+                -0.47496659263801533,
+                0.47610669939648886,
+                0.06715154033464898,
+                -0.018846696295511833
+              ],
+              "max_abs_per_seed_mean_difference": 0.47610669939648886,
+              "mean_over_seeds_difference": {
+                "mean": 0.05827496531801364,
+                "ci95_lo": 0.02202327137891315,
+                "ci95_hi": 0.09391472911646682
+              },
+              "gain_over_tr_cal_difference": 0.05827496531801346
+            },
+            "published_context": {
+              "published_mean": 32.47377210599465,
+              "published_ci95": [
+                32.08506950749939,
+                32.8787285572718
+              ],
+              "published_seed_min": 31.18625677120172,
+              "published_seed_max": 33.56637232324761,
+              "published_seed_sd": 1.1410021620386412,
+              "published_gain_over_tr_cal": 3.2073120907251775,
+              "cpu_minus_published_mean": -0.01688220060498935,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.04139276471301656,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.6553479066112619,
+                0.6487856628321369,
+                0.8592162081808303,
+                0.7310512631781854,
+                0.6502629778818452
+              ],
+              "mean_over_seeds": 0.7089328037368519,
+              "sd_over_seeds": 0.09083707409994947,
+              "tr_cal_mean": 0.46746458815663816,
+              "unet_minus_tr_cal": {
+                "mean": 0.2414682155802138,
+                "ci95_lo": 0.21901436081675935,
+                "ci95_hi": 0.2638050151900031
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.663305786815421,
+                0.6349860859872536,
+                0.8646029518026188,
+                0.7199986487361213,
+                0.6500387930828606
+              ],
+              "mean_over_seeds": 0.7065864532848549,
+              "sd_over_seeds": 0.09400341397011529,
+              "tr_cal_mean": 0.46746458815663816,
+              "unet_minus_tr_cal": {
+                "mean": 0.23912186512821684,
+                "ci95_lo": 0.2162040139755507,
+                "ci95_hi": 0.26177283229625514
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.007957880204159107,
+                -0.01379957684488331,
+                0.005386743621788481,
+                -0.011052614442064068,
+                -0.00022418479898456134
+              ],
+              "max_abs_per_seed_mean_difference": 0.01379957684488331,
+              "mean_over_seeds_difference": {
+                "mean": -0.0023463504519968975,
+                "ci95_lo": -0.004808291966816737,
+                "ci95_hi": 0.00019874795583831576
+              },
+              "gain_over_tr_cal_difference": -0.0023463504519969647
+            },
+            "published_context": {
+              "published_mean": 0.7089029612793598,
+              "published_ci95": [
+                0.6933503073794605,
+                0.7246154294033729
+              ],
+              "published_seed_min": 0.6497276326378058,
+              "published_seed_max": 0.8569707080259772,
+              "published_seed_sd": 0.08741800466058049,
+              "published_gain_over_tr_cal": 0.24143837463541779,
+              "cpu_minus_published_mean": 2.9842457492046393e-05,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.0023165079945048905,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "moderate",
+      "by_sensors": {
+        "16": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                32.784453886847395,
+                30.73077585730835,
+                32.571299589594226,
+                31.378613202692854,
+                30.97868509080151
+              ],
+              "mean_over_seeds": 31.688765525448872,
+              "sd_over_seeds": 0.9350871952557455,
+              "tr_cal_mean": 26.899380583949082,
+              "unet_minus_tr_cal": {
+                "mean": 4.789384941499784,
+                "ci95_lo": 4.448928892421972,
+                "ci95_hi": 5.118247395257298
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                32.74134262846236,
+                30.621770396315416,
+                32.890882748422015,
+                31.3255308575676,
+                30.949346443356767
+              ],
+              "mean_over_seeds": 31.705774614824833,
+              "sd_over_seeds": 1.0450737340562637,
+              "tr_cal_mean": 26.899380583949082,
+              "unet_minus_tr_cal": {
+                "mean": 4.80639403087575,
+                "ci95_lo": 4.46718796997854,
+                "ci95_hi": 5.130465578512935
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                -0.04311125838503216,
+                -0.10900546099293251,
+                0.31958315882778976,
+                -0.05308234512525445,
+                -0.02933864744474235
+              ],
+              "max_abs_per_seed_mean_difference": 0.31958315882778976,
+              "mean_over_seeds_difference": {
+                "mean": 0.01700908937596589,
+                "ci95_lo": -0.01830997503790913,
+                "ci95_hi": 0.05152021415185149
+              },
+              "gain_over_tr_cal_difference": 0.017009089375966013
+            },
+            "published_context": {
+              "published_mean": 31.71410369852866,
+              "published_ci95": [
+                31.358996047963632,
+                32.068385505274755
+              ],
+              "published_seed_min": 30.719369994851977,
+              "published_seed_max": 32.726026776190864,
+              "published_seed_sd": 0.9544161707762855,
+              "published_gain_over_tr_cal": 4.814723153511089,
+              "cpu_minus_published_mean": -0.025338173079788362,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.008329083703827678,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.6637836704131769,
+                0.5880333348536138,
+                0.7878742147349534,
+                0.6243619216016862,
+                0.6502364900505776
+              ],
+              "mean_over_seeds": 0.6628579263308015,
+              "sd_over_seeds": 0.0756139733978846,
+              "tr_cal_mean": 0.326509368875303,
+              "unet_minus_tr_cal": {
+                "mean": 0.3363485574554986,
+                "ci95_lo": 0.31710498577278806,
+                "ci95_hi": 0.3557572178537942
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.665771198194668,
+                0.5808512191625939,
+                0.7904806670745519,
+                0.6228752257921518,
+                0.6496382869767341
+              ],
+              "mean_over_seeds": 0.6619233194401399,
+              "sd_over_seeds": 0.07872445440472431,
+              "tr_cal_mean": 0.326509368875303,
+              "unet_minus_tr_cal": {
+                "mean": 0.3354139505648369,
+                "ci95_lo": 0.3159336603598924,
+                "ci95_hi": 0.3553022650508465
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.0019875277814911385,
+                -0.007182115691019897,
+                0.002606452339598442,
+                -0.0014866958095344218,
+                -0.0005982030738435062
+              ],
+              "max_abs_per_seed_mean_difference": 0.007182115691019897,
+              "mean_over_seeds_difference": {
+                "mean": -0.0009346068906616769,
+                "ci95_lo": -0.0025692240439853624,
+                "ci95_hi": 0.0007497349679556454
+              },
+              "gain_over_tr_cal_difference": -0.00093460689066166
+            },
+            "published_context": {
+              "published_mean": 0.6598413224233651,
+              "published_ci95": [
+                0.6425675989632605,
+                0.6768875704543414
+              ],
+              "published_seed_min": 0.5906129306704408,
+              "published_seed_max": 0.7780041556103144,
+              "published_seed_sd": 0.07265749829635434,
+              "published_gain_over_tr_cal": 0.33333196601925297,
+              "cpu_minus_published_mean": 0.0030166039074364104,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.002081997016774806,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        },
+        "64": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                33.23465402392873,
+                31.422992979866475,
+                33.22245565652443,
+                32.77017287754974,
+                31.318469821674107
+              ],
+              "mean_over_seeds": 32.3937490719087,
+              "sd_over_seeds": 0.9531741025899622,
+              "tr_cal_mean": 29.24412773797165,
+              "unet_minus_tr_cal": {
+                "mean": 3.1496213339370485,
+                "ci95_lo": 2.7772671529111923,
+                "ci95_hi": 3.5150879637097354
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                33.47387481041339,
+                30.94416172821333,
+                33.69961996095124,
+                32.83454551264642,
+                31.298490076201734
+              ],
+              "mean_over_seeds": 32.450138417685224,
+              "sd_over_seeds": 1.2600861910093102,
+              "tr_cal_mean": 29.24412773797165,
+              "unet_minus_tr_cal": {
+                "mean": 3.2060106797135757,
+                "ci95_lo": 2.8348227160719177,
+                "ci95_hi": 3.579531895397568
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.23922078648466538,
+                -0.4788312516531441,
+                0.47716430442680746,
+                0.06437263509668156,
+                -0.019979745472372912
+              ],
+              "max_abs_per_seed_mean_difference": 0.4788312516531441,
+              "mean_over_seeds_difference": {
+                "mean": 0.05638934577652739,
+                "ci95_lo": 0.020374870396593508,
+                "ci95_hi": 0.0915266901981676
+              },
+              "gain_over_tr_cal_difference": 0.05638934577652721
+            },
+            "published_context": {
+              "published_mean": 32.40866538004331,
+              "published_ci95": [
+                32.024703650124096,
+                32.807104309337106
+              ],
+              "published_seed_min": 31.02108104929904,
+              "published_seed_max": 33.531934989249045,
+              "published_seed_sd": 1.1721328905107136,
+              "published_gain_over_tr_cal": 3.1645376124825737,
+              "cpu_minus_published_mean": -0.014916308134608869,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.041473037641914345,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.6535773955262815,
+                0.6329495548354306,
+                0.8575973690196003,
+                0.7277683717204775,
+                0.6491767501563885
+              ],
+              "mean_over_seeds": 0.7042138882516357,
+              "sd_over_seeds": 0.09321085243478452,
+              "tr_cal_mean": 0.4657090311159837,
+              "unet_minus_tr_cal": {
+                "mean": 0.23850485713565198,
+                "ci95_lo": 0.2163057368301454,
+                "ci95_hi": 0.26075978944102346
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.6617683157568557,
+                0.6196266756436943,
+                0.8632245594184755,
+                0.7170704936281441,
+                0.6489264639873924
+              ],
+              "mean_over_seeds": 0.7021233016869124,
+              "sd_over_seeds": 0.09674858594416026,
+              "tr_cal_mean": 0.4657090311159837,
+              "unet_minus_tr_cal": {
+                "mean": 0.23641427057092876,
+                "ci95_lo": 0.2135185491475587,
+                "ci95_hi": 0.25896537075612613
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.008190920230574217,
+                -0.013322879191736248,
+                0.00562719039887527,
+                -0.010697878092333357,
+                -0.00025028616899613887
+              ],
+              "max_abs_per_seed_mean_difference": 0.013322879191736248,
+              "mean_over_seeds_difference": {
+                "mean": -0.002090586564723243,
+                "ci95_lo": -0.004509043323878069,
+                "ci95_hi": 0.00039022416098171374
+              },
+              "gain_over_tr_cal_difference": -0.002090586564723218
+            },
+            "published_context": {
+              "published_mean": 0.7042236624390077,
+              "published_ci95": [
+                0.6886987918275451,
+                0.7197083914079914
+              ],
+              "published_seed_min": 0.6374462955716987,
+              "published_seed_max": 0.8554640366601711,
+              "published_seed_sd": 0.08975227120392633,
+              "published_gain_over_tr_cal": 0.23851463069391005,
+              "cpu_minus_published_mean": -9.774187372024734e-06,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.0021003607520952983,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "high",
+      "by_sensors": {
+        "16": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                31.85841770815908,
+                28.959821165765216,
+                31.35448202187703,
+                29.196890558655195,
+                30.206255962834963
+              ],
+              "mean_over_seeds": 30.315173483458302,
+              "sd_over_seeds": 1.2807385180417707,
+              "tr_cal_mean": 26.291777568760626,
+              "unet_minus_tr_cal": {
+                "mean": 4.023395914697676,
+                "ci95_lo": 3.7366360199852355,
+                "ci95_hi": 4.3076908947517625
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                31.835852940106264,
+                28.77256118497944,
+                31.653364738212613,
+                29.15256079018065,
+                30.161530132669622
+              ],
+              "mean_over_seeds": 30.315173957229717,
+              "sd_over_seeds": 1.4016195187533114,
+              "tr_cal_mean": 26.291777568760626,
+              "unet_minus_tr_cal": {
+                "mean": 4.023396388469097,
+                "ci95_lo": 3.742509077219782,
+                "ci95_hi": 4.296518746080244
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                -0.02256476805281693,
+                -0.18725998078577533,
+                0.2988827163355836,
+                -0.04432976847454384,
+                -0.044725830165340597
+              ],
+              "max_abs_per_seed_mean_difference": 0.2988827163355836,
+              "mean_over_seeds_difference": {
+                "mean": 4.73771421685143e-07,
+                "ci95_lo": -0.0293274858402087,
+                "ci95_hi": 0.027473074812728187
+              },
+              "gain_over_tr_cal_difference": 4.737714212055266e-07
+            },
+            "published_context": {
+              "published_mean": 30.33332399824467,
+              "published_ci95": [
+                30.040478764865032,
+                30.61674102055891
+              ],
+              "published_seed_min": 28.90025437515528,
+              "published_seed_max": 31.85848291111106,
+              "published_seed_sd": 1.3031526425904445,
+              "published_gain_over_tr_cal": 4.041546605446085,
+              "cpu_minus_published_mean": -0.018150514786366756,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.018150041014951768,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.614881573144332,
+                0.46028679962707003,
+                0.7050150227533,
+                0.4965855310388095,
+                0.6065538236059876
+              ],
+              "mean_over_seeds": 0.5766645500338998,
+              "sd_over_seeds": 0.09846850188049261,
+              "tr_cal_mean": 0.2960261603569097,
+              "unet_minus_tr_cal": {
+                "mean": 0.2806383896769901,
+                "ci95_lo": 0.26404894206050117,
+                "ci95_hi": 0.2974160824548527
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.6218958339255672,
+                0.44946384268555273,
+                0.7109171733738715,
+                0.4941955764266652,
+                0.6054013922140904
+              ],
+              "mean_over_seeds": 0.5763747637251495,
+              "sd_over_seeds": 0.10473320114924042,
+              "tr_cal_mean": 0.2960261603569097,
+              "unet_minus_tr_cal": {
+                "mean": 0.2803486033682397,
+                "ci95_lo": 0.26364910119988005,
+                "ci95_hi": 0.29718061464908097
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.0070142607812352376,
+                -0.010822956941517303,
+                0.0059021506205715335,
+                -0.002389954612144307,
+                -0.0011524313918972462
+              ],
+              "max_abs_per_seed_mean_difference": 0.010822956941517303,
+              "mean_over_seeds_difference": {
+                "mean": -0.00028978630875040295,
+                "ci95_lo": -0.0014100493512403094,
+                "ci95_hi": 0.0008467850615525099
+              },
+              "gain_over_tr_cal_difference": -0.0002897863087504282
+            },
+            "published_context": {
+              "published_mean": 0.575294630474632,
+              "published_ci95": [
+                0.5615129416588228,
+                0.5889560261003554
+              ],
+              "published_seed_min": 0.46041110060224566,
+              "published_seed_max": 0.6927853659555544,
+              "published_seed_sd": 0.09693419772143773,
+              "published_gain_over_tr_cal": 0.2792684871528976,
+              "cpu_minus_published_mean": 0.001369919559267796,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.0010801332505174788,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        },
+        "64": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                32.80355998801498,
+                29.826106631648766,
+                32.74243178818934,
+                31.873843659227987,
+                31.02406839342367
+              ],
+              "mean_over_seeds": 31.65400209210095,
+              "sd_over_seeds": 1.2542439109970973,
+              "tr_cal_mean": 28.917882817385205,
+              "unet_minus_tr_cal": {
+                "mean": 2.7361192747157417,
+                "ci95_lo": 2.4048988683028396,
+                "ci95_hi": 3.0592605080212336
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                32.98539620765071,
+                29.42414857197569,
+                33.195257581036955,
+                31.912082572088547,
+                30.99412517375653
+              ],
+              "mean_over_seeds": 31.702202021301684,
+              "sd_over_seeds": 1.5500606770341674,
+              "tr_cal_mean": 28.917882817385205,
+              "unet_minus_tr_cal": {
+                "mean": 2.7843192039164797,
+                "ci95_lo": 2.453955087925178,
+                "ci95_hi": 3.1077013224472654
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.18183621963572705,
+                -0.40195805967307763,
+                0.45282579284761226,
+                0.03823891286056025,
+                -0.029943219667138976
+              ],
+              "max_abs_per_seed_mean_difference": 0.45282579284761226,
+              "mean_over_seeds_difference": {
+                "mean": 0.04819992920073743,
+                "ci95_lo": 0.01771129164500712,
+                "ci95_hi": 0.07911586471205874
+              },
+              "gain_over_tr_cal_difference": 0.04819992920073801
+            },
+            "published_context": {
+              "published_mean": 31.666754691374017,
+              "published_ci95": [
+                31.32408060080753,
+                32.012153245073534
+              ],
+              "published_seed_min": 29.52166383210766,
+              "published_seed_max": 33.01828551887857,
+              "published_seed_sd": 1.4581979675804237,
+              "published_gain_over_tr_cal": 2.7488718499099547,
+              "cpu_minus_published_mean": -0.012752599273067489,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.03544732992766697,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.6244109713531454,
+                0.5068297797794472,
+                0.8323058638370765,
+                0.6727924104342329,
+                0.6336113277654677
+              ],
+              "mean_over_seeds": 0.6539900706338739,
+              "sd_over_seeds": 0.11736313046179658,
+              "tr_cal_mean": 0.4417403686380936,
+              "unet_minus_tr_cal": {
+                "mean": 0.21224970199578042,
+                "ci95_lo": 0.1912003839289008,
+                "ci95_hi": 0.23322266077085468
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.633526215939644,
+                0.4938627564672036,
+                0.8400058696117023,
+                0.6645813934087337,
+                0.6331001065795872
+              ],
+              "mean_over_seeds": 0.6530152684013741,
+              "sd_over_seeds": 0.12369844287609906,
+              "tr_cal_mean": 0.4417403686380936,
+              "unet_minus_tr_cal": {
+                "mean": 0.21127489976328065,
+                "ci95_lo": 0.18973068455881814,
+                "ci95_hi": 0.23248490462881685
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.009115244586498594,
+                -0.012967023312243586,
+                0.007700005774625818,
+                -0.008211017025499201,
+                -0.0005112211858805393
+              ],
+              "max_abs_per_seed_mean_difference": 0.012967023312243586,
+              "mean_over_seeds_difference": {
+                "mean": -0.000974802232499788,
+                "ci95_lo": -0.0031121521735136435,
+                "ci95_hi": 0.0011245680113940758
+              },
+              "gain_over_tr_cal_difference": -0.0009748022324997663
+            },
+            "published_context": {
+              "published_mean": 0.6531640771089877,
+              "published_ci95": [
+                0.639381990354783,
+                0.6671291732916204
+              ],
+              "published_seed_min": 0.5090877304043314,
+              "published_seed_max": 0.8306589529584696,
+              "published_seed_sd": 0.11516492586256016,
+              "published_gain_over_tr_cal": 0.2114237045132794,
+              "cpu_minus_published_mean": 0.0008259935248862149,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.00014880870761357912,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "label": "severe",
+      "by_sensors": {
+        "16": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                29.179796702937903,
+                25.66987955733178,
+                28.35124367402708,
+                24.829188852439323,
+                27.486928123575137
+              ],
+              "mean_over_seeds": 27.103407382062244,
+              "sd_over_seeds": 1.8195224735709048,
+              "tr_cal_mean": 23.948392897969306,
+              "unet_minus_tr_cal": {
+                "mean": 3.1550144840929395,
+                "ci95_lo": 2.935473306110821,
+                "ci95_hi": 3.3739420142600935
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                29.187952749376493,
+                25.513398247999973,
+                28.59683925099114,
+                24.771688813091387,
+                27.42782877519664
+              ],
+              "mean_over_seeds": 27.099541567331123,
+              "sd_over_seeds": 1.9134970070863906,
+              "tr_cal_mean": 23.948392897969306,
+              "unet_minus_tr_cal": {
+                "mean": 3.151148669361822,
+                "ci95_lo": 2.935415885964245,
+                "ci95_hi": 3.3615779843479707
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.00815604643858947,
+                -0.15648130933180582,
+                0.2455955769640603,
+                -0.05750003934793568,
+                -0.05909934837849562
+              ],
+              "max_abs_per_seed_mean_difference": 0.2455955769640603,
+              "mean_over_seeds_difference": {
+                "mean": -0.003865814731117858,
+                "ci95_lo": -0.02098644626522752,
+                "ci95_hi": 0.013169987616430682
+              },
+              "gain_over_tr_cal_difference": -0.0038658147311174673
+            },
+            "published_context": {
+              "published_mean": 27.100002851555164,
+              "published_ci95": [
+                26.88869956821486,
+                27.30293714354274
+              ],
+              "published_seed_min": 24.8467537802316,
+              "published_seed_max": 29.23735452244479,
+              "published_seed_sd": 1.8216385688860253,
+              "published_gain_over_tr_cal": 3.151610354258172,
+              "cpu_minus_published_mean": 0.0034045305070797838,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": -0.00046128422404123626,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.4589518035205332,
+                0.28738461053447445,
+                0.46573866137208425,
+                0.28860623558421894,
+                0.4154795493057995
+              ],
+              "mean_over_seeds": 0.3832321720634221,
+              "sd_over_seeds": 0.08905265241791638,
+              "tr_cal_mean": 0.22478323411578582,
+              "unet_minus_tr_cal": {
+                "mean": 0.15844893794763626,
+                "ci95_lo": 0.14852180940617318,
+                "ci95_hi": 0.16816189100219667
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.4695871606221438,
+                0.2768506221384065,
+                0.47785954562289246,
+                0.2857606210571335,
+                0.41646217603824454
+              ],
+              "mean_over_seeds": 0.3853040250957641,
+              "sd_over_seeds": 0.09786729737888597,
+              "tr_cal_mean": 0.22478323411578582,
+              "unet_minus_tr_cal": {
+                "mean": 0.16052079097997832,
+                "ci95_lo": 0.15046390281521155,
+                "ci95_hi": 0.17030390918542665
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.010635357101610565,
+                -0.01053398839606795,
+                0.012120884250808206,
+                -0.002845614527085427,
+                0.0009826267324450355
+              ],
+              "max_abs_per_seed_mean_difference": 0.012120884250808206,
+              "mean_over_seeds_difference": {
+                "mean": 0.0020718530323420997,
+                "ci95_lo": 0.0013548260993973802,
+                "ci95_hi": 0.002803570384443133
+              },
+              "gain_over_tr_cal_difference": 0.002071853032342058
+            },
+            "published_context": {
+              "published_mean": 0.38338013241426794,
+              "published_ci95": [
+                0.3764810562290635,
+                0.39024609673380534
+              ],
+              "published_seed_min": 0.2854523142064293,
+              "published_seed_max": 0.47514281347840864,
+              "published_seed_sd": 0.09021390208874372,
+              "published_gain_over_tr_cal": 0.15859691405694465,
+              "cpu_minus_published_mean": -0.0001479603508458549,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.0019238926814961754,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        },
+        "64": {
+          "n_images": 200,
+          "psnr": {
+            "cpu": {
+              "per_seed_means": [
+                31.1522562640689,
+                27.00553439099195,
+                30.971975150440826,
+                28.79387120758884,
+                29.653327349631127
+              ],
+              "mean_over_seeds": 29.51539287254433,
+              "sd_over_seeds": 1.7058694795605869,
+              "tr_cal_mean": 27.457756467295557,
+              "unet_minus_tr_cal": {
+                "mean": 2.0576364052487692,
+                "ci95_lo": 1.7925652641255048,
+                "ci95_hi": 2.312329123058483
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                31.189897755984703,
+                26.75133120998831,
+                31.368246613881073,
+                28.78335688508678,
+                29.590171778362382
+              ],
+              "mean_over_seeds": 29.536600848660648,
+              "sd_over_seeds": 1.898439500372392,
+              "tr_cal_mean": 27.457756467295557,
+              "unet_minus_tr_cal": {
+                "mean": 2.0788443813650876,
+                "ci95_lo": 1.817069497847648,
+                "ci95_hi": 2.334644209679566
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.037641491915803016,
+                -0.25420318100363914,
+                0.39627146344024666,
+                -0.01051432250206119,
+                -0.06315557126874438
+              ],
+              "max_abs_per_seed_mean_difference": 0.39627146344024666,
+              "mean_over_seeds_difference": {
+                "mean": 0.02120797611631824,
+                "ci95_lo": 0.00024953847294767527,
+                "ci95_hi": 0.043023893238960664
+              },
+              "gain_over_tr_cal_difference": 0.021207976116318417
+            },
+            "published_context": {
+              "published_mean": 29.504590001992156,
+              "published_ci95": [
+                29.242255761339024,
+                29.774393046775984
+              ],
+              "published_seed_min": 26.87169532888505,
+              "published_seed_max": 31.182688128450273,
+              "published_seed_sd": 1.7880956595093878,
+              "published_gain_over_tr_cal": 2.046833504382295,
+              "cpu_minus_published_mean": 0.01080287055217255,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.03201084666849141,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          },
+          "ssim": {
+            "cpu": {
+              "per_seed_means": [
+                0.5313011929015979,
+                0.34642445971667135,
+                0.7152834278003453,
+                0.4756395422214473,
+                0.5498087470496656
+              ],
+              "mean_over_seeds": 0.5236914739379455,
+              "sd_over_seeds": 0.13339797509231757,
+              "tr_cal_mean": 0.36510091635050335,
+              "unet_minus_tr_cal": {
+                "mean": 0.15859055758744212,
+                "ci95_lo": 0.14098730051851244,
+                "ci95_hi": 0.17529810971056145
+              }
+            },
+            "cuda": {
+              "per_seed_means": [
+                0.5407128950471535,
+                0.3349683039190205,
+                0.7278986505411212,
+                0.4755325825653103,
+                0.5491519797274313
+              ],
+              "mean_over_seeds": 0.5256528823600074,
+              "sd_over_seeds": 0.14191107709858022,
+              "tr_cal_mean": 0.36510091635050335,
+              "unet_minus_tr_cal": {
+                "mean": 0.160551966009504,
+                "ci95_lo": 0.14286768268990369,
+                "ci95_hi": 0.17724980007697883
+              }
+            },
+            "b_minus_a": {
+              "per_seed_mean_difference": [
+                0.009411702145555534,
+                -0.011456155797650858,
+                0.012615222740775978,
+                -0.00010695965613699565,
+                -0.0006567673222342973
+              ],
+              "max_abs_per_seed_mean_difference": 0.012615222740775978,
+              "mean_over_seeds_difference": {
+                "mean": 0.001961408422061878,
+                "ci95_lo": 0.0006658205487378876,
+                "ci95_hi": 0.0033554072091091223
+              },
+              "gain_over_tr_cal_difference": 0.0019614084220618833
+            },
+            "published_context": {
+              "published_mean": 0.5216301264945225,
+              "published_ci95": [
+                0.5116379698137999,
+                0.5313932463986479
+              ],
+              "published_seed_min": 0.34481420081741887,
+              "published_seed_max": 0.7077962276581671,
+              "published_seed_sd": 0.1327213887641841,
+              "published_gain_over_tr_cal": 0.15652920901833833,
+              "cpu_minus_published_mean": 0.0020613474434230117,
+              "cpu_mean_within_published_seed_range": true,
+              "cpu_mean_within_published_ci95": true,
+              "cuda_minus_published_mean": 0.0040227558654849505,
+              "cuda_mean_within_published_seed_range": true,
+              "cuda_mean_within_published_ci95": true,
+              "device_difference_within_published_seed_sd": true
+            }
+          }
+        }
+      }
+    }
+  ]
+}

@@ -223,7 +223,61 @@ this change load unchanged. A `.meta.json` file beside each remote checkpoint re
 devices, library versions, seed, model and training configuration, dataset fingerprint, timing and
 CUDA memory.
 
+## Recorded run
+
+One full run is recorded in `remote_runs/20261005T160859Z-0909a72-kaggle/`: Kaggle, Tesla T4,
+Python 3.13.15, PyTorch 2.11.0+cu128, commit `0909a72`, JAX on CPU. The directory holds the smoke
+verdict, environment and provenance records, the per-arm reports and per-image scores, the training
+metadata of all ten networks, the timings and the device comparison. Checkpoints, generated data and
+figures are not stored.
+
+Reconstruction quality, noiseless, 200 test images per sensor count, mean over the five networks:
+
+| Sensors | Metric | CPU arm | CUDA arm | CUDA minus CPU [95 % CI] | Published |
+|---|---|---|---|---|---|
+| 16 | PSNR | 31.82 dB | 31.84 dB | +0.02 dB [-0.01, +0.06] | 31.84 dB |
+| 64 | PSNR | 32.46 dB | 32.52 dB | +0.06 dB [+0.02, +0.09] | 32.48 dB |
+| 16 | SSIM | 0.671 | 0.670 | -0.001 [-0.003, +0.001] | 0.668 |
+| 64 | SSIM | 0.709 | 0.707 | -0.002 [-0.005, +0.000] | 0.709 |
+
+- The gain over calibrated time reversal is 4.87 dB (CPU) and 4.90 dB (CUDA) at 16 sensors and
+  3.19 dB and 3.25 dB at 64 sensors; the published values are 4.90 and 3.21 dB.
+- At every noise level, sensor count and metric (20 combinations) the mean of each arm lies inside
+  the published 95 % interval and inside the published range of the five networks.
+- Device: the network-average difference is at most 0.06 dB in PSNR, against about 1 dB between
+  seeds. It is not bitwise: single networks differ by up to 0.48 dB between devices, and three of the
+  five seeds select a different epoch on CUDA. At 64 sensors the interval of the difference excludes
+  zero at four of the five noise levels (about +0.05 dB); with five networks per arm this does not
+  establish a systematic device effect.
+- Platform: phantoms and sensor assignments are identical to those generated on macOS. The
+  time-reversal reconstructions differ by at most 3.7e-7, which is enough to give different trained
+  weights, and two of the five CPU networks select a different epoch. The CPU-arm means are within
+  0.03 dB of the published ones.
+- Time reversal is bitwise identical in the two arms.
+
+Timing, from this single run on this machine:
+
+| Stage | CPU arm | CUDA arm |
+|---|---|---|
+| U-Net training, five networks | 143.6 s | 16.5 s |
+| U-Net training, per epoch after the first | 0.48 s | 0.054 s |
+| U-Net inference in the evaluation | 71.5 s | 2.6 s |
+
+The whole run took 1,260 s, of which about 997 s (79 %) was j-Wave on CPU: work that both arms
+share. The U-Net figures compare the devices; they do not describe the pipeline, whose duration is
+set by the physics. Peak CUDA allocator memory during training was 72 MiB allocated and 118 MiB
+reserved.
+
+The 8-image evaluation of each arm's seed-0 network is in `report/<arm>/mvp_seed0/`. These are
+newly trained networks, not the original MPS checkpoint.
+
+Two problems appeared on the way to this run and are handled by the workflow: the platform's JAX GPU
+plugin had to be removed before the pinned jaxlib could be imported, and compiled JAX code had to be
+released during long simulation loops (see Known risks).
+
 ## Known risks
+
+- The recorded run is one run on one platform. The Colab launcher has not been run.
 
 - The pinned packages may not install on the Python version of the remote platform. The workflow
   stops in that case.
@@ -234,8 +288,6 @@ CUDA memory.
   mappings per process, so a long run would stop with "LLVM compilation error: Cannot allocate
   memory" after about 800 simulations. `src/jax_cache.py` clears JAX's compilation caches every 50
   simulations in the data-generation and evaluation loops. This does not change any result.
-- j-Wave on Linux x86 may not reproduce the macOS arm64 data bit for bit. This is the platform
-  effect above and is independent of CUDA.
-- The CUDA path has been exercised only through its CPU and MPS equivalents and with mocked CUDA
-  calls until the smoke has been run on a GPU.
+- j-Wave on Linux x86 does not reproduce the macOS arm64 data bit for bit (differences of order
+  1e-7 in the recorded run). This is the platform effect above and is independent of CUDA.
 - Kaggle sessions without Internet access cannot clone or install.

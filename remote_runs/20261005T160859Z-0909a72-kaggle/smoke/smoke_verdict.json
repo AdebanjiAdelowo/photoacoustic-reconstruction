@@ -1,0 +1,322 @@
+{
+  "checks": [
+    {
+      "detail": "devices ['TFRT_CPU_0']",
+      "name": "jax_cpu_only",
+      "passed": true
+    },
+    {
+      "detail": "resolved cuda",
+      "name": "device_is_cuda",
+      "passed": true
+    },
+    {
+      "detail": "(297, 16, 1), expected (297, 16, 1)",
+      "name": "recording_shape_image0",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "recording_finite_image0",
+      "passed": true
+    },
+    {
+      "detail": "(64, 64) float32, expected (64, 64) float32",
+      "name": "reconstruction_shape_image0",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "reconstruction_finite_image0",
+      "passed": true
+    },
+    {
+      "detail": "(297, 16, 1), expected (297, 16, 1)",
+      "name": "recording_shape_image1",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "recording_finite_image1",
+      "passed": true
+    },
+    {
+      "detail": "(64, 64) float32, expected (64, 64) float32",
+      "name": "reconstruction_shape_image1",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "reconstruction_finite_image1",
+      "passed": true
+    },
+    {
+      "detail": "(297, 64, 1), expected (297, 64, 1)",
+      "name": "recording_shape_image2",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "recording_finite_image2",
+      "passed": true
+    },
+    {
+      "detail": "(64, 64) float32, expected (64, 64) float32",
+      "name": "reconstruction_shape_image2",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "reconstruction_finite_image2",
+      "passed": true
+    },
+    {
+      "detail": "(297, 64, 1), expected (297, 64, 1)",
+      "name": "recording_shape_image3",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "recording_finite_image3",
+      "passed": true
+    },
+    {
+      "detail": "(64, 64) float32, expected (64, 64) float32",
+      "name": "reconstruction_shape_image3",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "reconstruction_finite_image3",
+      "passed": true
+    },
+    {
+      "detail": "devices ['TFRT_CPU_0']",
+      "name": "jax_cpu_only_after_simulation",
+      "passed": true
+    },
+    {
+      "detail": "['cuda:0']",
+      "name": "parameters_on_device",
+      "passed": true
+    },
+    {
+      "detail": "x cuda:0, y cuda:0",
+      "name": "batch_on_device",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "float32_everywhere",
+      "passed": true
+    },
+    {
+      "detail": "first 0.0480076, last 0.00205087",
+      "name": "losses_finite",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "gradients_finite",
+      "passed": true
+    },
+    {
+      "detail": "0.0480076 -> 0.00205087",
+      "name": "loss_decreased",
+      "passed": true
+    },
+    {
+      "detail": "cuda:0",
+      "name": "output_on_device",
+      "passed": true
+    },
+    {
+      "detail": "(4, 1, 64, 64)",
+      "name": "output_shape",
+      "passed": true
+    },
+    {
+      "detail": "",
+      "name": "output_finite",
+      "passed": true
+    },
+    {
+      "detail": "[27.075, 26.166, 29.108, 27.086]",
+      "name": "psnr_finite",
+      "passed": true
+    },
+    {
+      "detail": "[0.3698, 0.2659, 0.3426, 0.397]",
+      "name": "ssim_finite",
+      "passed": true
+    },
+    {
+      "detail": "['cpu']",
+      "name": "checkpoint_is_device_neutral",
+      "passed": true
+    },
+    {
+      "detail": "max |difference| 2.444e-06, tolerance 1e-04",
+      "name": "cpu_reload_matches_device_output",
+      "passed": true
+    }
+  ],
+  "cuda_memory": {
+    "inference": {
+      "peak_allocated_bytes": 12102144,
+      "peak_reserved_bytes": 52428800
+    },
+    "note": "PyTorch CUDA allocator peaks; not comparable with process RSS or MPS figures",
+    "training": {
+      "peak_allocated_bytes": 32403968,
+      "peak_reserved_bytes": 52428800
+    }
+  },
+  "failed_checks": [],
+  "losses": [
+    0.04800761491060257,
+    0.03712601214647293,
+    0.02138214185833931,
+    0.01718606799840927,
+    0.014814836904406548,
+    0.012269790284335613,
+    0.00968086812645197,
+    0.007918030023574829,
+    0.007005104795098305,
+    0.006259365938603878,
+    0.005438545718789101,
+    0.004616477061063051,
+    0.003933556377887726,
+    0.003471906529739499,
+    0.003154066391289234,
+    0.0028754984959959984,
+    0.002609861083328724,
+    0.0023855888284742832,
+    0.002209919271990657,
+    0.002050870331004262
+  ],
+  "max_abs_difference_cpu_reload_vs_device": 2.4437904357910156e-06,
+  "passed": true,
+  "protocol": {
+    "batch_size": 4,
+    "loss": "MSELoss",
+    "lr": 0.001,
+    "optimizer": "Adam",
+    "output_tolerance": 0.0001,
+    "phantom_seeds": [
+      900000,
+      900001,
+      900002,
+      900003
+    ],
+    "sensor_counts": [
+      16,
+      16,
+      64,
+      64
+    ],
+    "train_steps": 20
+  },
+  "provenance": {
+    "cuda_available": true,
+    "cudnn_version": 91900,
+    "determinism": {
+      "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+      "cudnn_benchmark": false,
+      "cudnn_deterministic": true,
+      "deterministic_algorithms": true,
+      "device_type": "cuda",
+      "tf32_cudnn": false,
+      "tf32_matmul": false
+    },
+    "git_commit": "0909a7234abca4f13698d256dc6f5a3814ec0c8e",
+    "git_dirty": false,
+    "gpu_name": "Tesla T4",
+    "jax_cpu_only": true,
+    "jax_default_backend": "cpu",
+    "jax_devices": [
+      "TFRT_CPU_0"
+    ],
+    "jax_enable_x64": false,
+    "jax_platforms_env": "cpu",
+    "jax_version": "0.4.38",
+    "model": {
+      "base_features": 16,
+      "class": "ReconstructionUNet"
+    },
+    "mps_available": false,
+    "numpy_version": "2.4.6",
+    "parameter_count": 481745,
+    "platform": "Linux-6.18.48+-x86_64-with-glibc2.39",
+    "python_version": "3.13.15",
+    "requested_device": "cuda",
+    "resolved_device": "cuda",
+    "torch_cuda_version": "12.8",
+    "torch_version": "2.11.0+cu128"
+  },
+  "psnr": [
+    27.074625575659095,
+    26.166188102214353,
+    29.108371914404344,
+    27.086336463361196
+  ],
+  "require_cuda": true,
+  "schema_version": 1,
+  "ssim": [
+    0.36981812802731406,
+    0.26587378659215216,
+    0.3425893056141069,
+    0.39695891235026504
+  ],
+  "timing": {
+    "cpu_reference_training": {
+      "final_loss": 0.002049202099442482,
+      "final_loss_difference_device_minus_cpu": 1.6682315617799759e-06,
+      "first_step_seconds": 0.09005139900000358,
+      "later_steps_mean_seconds": 0.0605884864735823,
+      "note": "informational; trajectories on different devices are not expected to agree bitwise"
+    },
+    "forward_seconds_per_call": [
+      1.7972074620001877,
+      0.27534367499993095,
+      0.26196182500007126,
+      0.2719681290000153
+    ],
+    "inference_seconds": 0.0030133629998090328,
+    "inference_warmup_seconds": 0.003172712999912619,
+    "metrics_seconds_per_image": 0.0005402095000590634,
+    "note": "j-Wave on CPU; the first call for each sensor count includes JAX compilation",
+    "synchronized": true,
+    "time_reversal_seconds_per_call": [
+      0.33089979399937874,
+      0.2865294160001213,
+      0.3057941249999203,
+      0.29373184199994284
+    ],
+    "total_seconds": 8.31966730899967,
+    "train_first_step_seconds": 0.5275965860000724,
+    "train_later_steps_mean_seconds": 0.01405461494735056,
+    "train_step_seconds": [
+      0.5275965860000724,
+      0.015770070000144187,
+      0.013930287000221142,
+      0.013617436000458838,
+      0.013324554999599059,
+      0.01592972100024781,
+      0.014067967000300996,
+      0.01389820399981545,
+      0.013640991999636753,
+      0.013896112999645993,
+      0.013798840999697859,
+      0.013802394999402168,
+      0.013807497000016156,
+      0.013584537000497221,
+      0.013646917999722064,
+      0.014077492999604146,
+      0.013904449000619934,
+      0.014112855000348645,
+      0.013912773999436467,
+      0.014314580000245769
+    ]
+  }
+}

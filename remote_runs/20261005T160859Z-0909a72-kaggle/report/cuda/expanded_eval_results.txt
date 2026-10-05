@@ -1,0 +1,70 @@
+Expanded evaluation (scripts/expanded_evaluation.py)
+
+Expanded evaluation: 400 held-out test images, 5 independently trained U-Nets, 5 noise levels.
+
+Protocol (fixed before any result was seen):
+  * Training/validation data: the existing data/train.npz (40) and data/val.npz (8), unchanged.
+  * Test data: 400 new phantoms, seeds 100000-100399 (disjoint from train 0-39, val 10000-10007 and
+    the original test 20000-20007; checked below), exactly 200 per sensor count (even index -> 16
+    sensors, odd -> 64). Phantoms, forward model and time reversal are generated exactly as in
+    scripts/generate_training_data.py. Written to data/test_expanded.npz (gitignored).
+  * U-Net: the existing recipe (scripts/train.py: 60 epochs, Adam 1e-3, batch 8, best-validation
+    checkpoint) trained on CPU with deterministic algorithms for seeds 0-4, written to
+    experiments/expanded/unet_seed{s}.pt (gitignored). The original MPS checkpoint
+    (experiments/unet_checkpoint.pt) is also scored, for continuity only.
+  * Time-reversal calibration: one least-squares gain per sensor count fitted on the training split
+    (src/calibration.py), applied unchanged to every test image and noise level. Its uncertainty is a
+    bootstrap over training images; the gain fitted on the validation split is reported for comparison.
+  * Noise: the levels, noise model and noise seeds of scripts/evaluate_noise_sensitivity.py.
+  * Uncertainty: 95% percentile bootstrap intervals over test images (2000 resamples, seed 0). For the
+    U-Net the headline per-image score is the mean over the 5 trained networks; the spread between
+    networks is reported separately (min/max/sd of the 5 per-network means), never combined with the
+    image-level interval.
+
+Calibration gains (training split; bootstrap over training images):
+  16 sensors: train 14.68 (95% CI 14.23-15.23, n=16); validation 14.65 (n=5); test-set oracle, reference only 14.31
+  64 sensors: train 3.68 (95% CI 3.59-3.78, n=24); validation 4.09 (n=3); test-set oracle, reference only 3.68
+
+Networks: seed0 epoch 54 val 0.000481, seed1 epoch 56 val 0.000713, seed2 epoch 57 val 0.000367, seed3 epoch 57 val 0.000653, seed4 epoch 59 val 0.000730
+
+== noise noiseless (relative std 0.0)
+  16 sensors, PSNR (n=200): raw TR 19.86 [19.56, 20.16] | cal TR 26.94 [26.70, 27.18] | U-Net 31.84 [31.48, 32.20] (5 networks: 30.84-33.01, sd 1.01) | U-Net - cal TR 4.90 [4.54, 5.23]
+  16 sensors, SSIM (n=200): raw TR 0.784 [0.774, 0.794] | cal TR 0.329 [0.323, 0.336] | U-Net 0.670 [0.653, 0.688] (5 networks: 0.598-0.797, sd 0.076) | U-Net - cal TR 0.341 [0.321, 0.361]
+  64 sensors, PSNR (n=200): raw TR 21.29 [20.98, 21.60] | cal TR 29.27 [28.98, 29.56] | U-Net 32.52 [32.13, 32.91] (5 networks: 31.12-33.74, sd 1.23) | U-Net - cal TR 3.25 [2.87, 3.63]
+  64 sensors, SSIM (n=200): raw TR 0.684 [0.673, 0.697] | cal TR 0.468 [0.457, 0.478] | U-Net 0.707 [0.691, 0.723] (5 networks: 0.636-0.865, sd 0.094) | U-Net - cal TR 0.239 [0.216, 0.262]
+== noise low (relative std 0.01)
+  16 sensors, PSNR (n=200): raw TR 19.86 [19.56, 20.16] | cal TR 26.94 [26.70, 27.18] | U-Net 31.83 [31.47, 32.20] (5 networks: 30.83-33.00, sd 1.01) | U-Net - cal TR 4.89 [4.54, 5.22]
+      change from noiseless: tr_raw -0.00 [-0.00, +0.00], tr_cal -0.00 [-0.00, -0.00], unet_mean_over_seeds -0.01 [-0.01, -0.00]
+  16 sensors, SSIM (n=200): raw TR 0.784 [0.774, 0.794] | cal TR 0.329 [0.323, 0.336] | U-Net 0.670 [0.652, 0.688] (5 networks: 0.597-0.797, sd 0.076) | U-Net - cal TR 0.341 [0.321, 0.361]
+      change from noiseless: tr_raw -0.000 [-0.000, -0.000], tr_cal -0.000 [-0.000, -0.000], unet_mean_over_seeds -0.000 [-0.000, -0.000]
+  64 sensors, PSNR (n=200): raw TR 21.29 [20.98, 21.60] | cal TR 29.27 [28.98, 29.56] | U-Net 32.52 [32.13, 32.91] (5 networks: 31.11-33.74, sd 1.23) | U-Net - cal TR 3.25 [2.87, 3.62]
+      change from noiseless: tr_raw -0.00 [-0.00, +0.00], tr_cal -0.00 [-0.00, -0.00], unet_mean_over_seeds -0.00 [-0.00, -0.00]
+  64 sensors, SSIM (n=200): raw TR 0.684 [0.673, 0.697] | cal TR 0.467 [0.457, 0.478] | U-Net 0.707 [0.690, 0.723] (5 networks: 0.635-0.865, sd 0.094) | U-Net - cal TR 0.239 [0.216, 0.262]
+      change from noiseless: tr_raw -0.000 [-0.000, -0.000], tr_cal -0.000 [-0.000, -0.000], unet_mean_over_seeds -0.000 [-0.000, -0.000]
+== noise moderate (relative std 0.05)
+  16 sensors, PSNR (n=200): raw TR 19.86 [19.56, 20.16] | cal TR 26.90 [26.66, 27.14] | U-Net 31.71 [31.35, 32.06] (5 networks: 30.62-32.89, sd 1.05) | U-Net - cal TR 4.81 [4.47, 5.13]
+      change from noiseless: tr_raw -0.00 [-0.00, -0.00], tr_cal -0.04 [-0.05, -0.04], unet_mean_over_seeds -0.13 [-0.15, -0.12]
+  16 sensors, SSIM (n=200): raw TR 0.784 [0.774, 0.794] | cal TR 0.327 [0.320, 0.333] | U-Net 0.662 [0.645, 0.679] (5 networks: 0.581-0.790, sd 0.079) | U-Net - cal TR 0.335 [0.316, 0.355]
+      change from noiseless: tr_raw -0.000 [-0.000, -0.000], tr_cal -0.003 [-0.003, -0.003], unet_mean_over_seeds -0.008 [-0.009, -0.008]
+  64 sensors, PSNR (n=200): raw TR 21.29 [20.98, 21.60] | cal TR 29.24 [28.96, 29.54] | U-Net 32.45 [32.07, 32.84] (5 networks: 30.94-33.70, sd 1.26) | U-Net - cal TR 3.21 [2.83, 3.58]
+      change from noiseless: tr_raw -0.00 [-0.00, -0.00], tr_cal -0.02 [-0.03, -0.02], unet_mean_over_seeds -0.07 [-0.07, -0.06]
+  64 sensors, SSIM (n=200): raw TR 0.684 [0.673, 0.696] | cal TR 0.466 [0.455, 0.477] | U-Net 0.702 [0.686, 0.718] (5 networks: 0.620-0.863, sd 0.097) | U-Net - cal TR 0.236 [0.214, 0.259]
+      change from noiseless: tr_raw -0.000 [-0.000, -0.000], tr_cal -0.002 [-0.002, -0.002], unet_mean_over_seeds -0.005 [-0.005, -0.004]
+== noise high (relative std 0.2)
+  16 sensors, PSNR (n=200): raw TR 19.86 [19.56, 20.16] | cal TR 26.29 [26.05, 26.53] | U-Net 30.32 [30.03, 30.59] (5 networks: 28.77-31.84, sd 1.40) | U-Net - cal TR 4.02 [3.74, 4.30]
+      change from noiseless: tr_raw -0.00 [-0.00, -0.00], tr_cal -0.65 [-0.68, -0.62], unet_mean_over_seeds -1.52 [-1.63, -1.42]
+  16 sensors, SSIM (n=200): raw TR 0.782 [0.772, 0.793] | cal TR 0.296 [0.290, 0.302] | U-Net 0.576 [0.562, 0.591] (5 networks: 0.449-0.711, sd 0.105) | U-Net - cal TR 0.280 [0.264, 0.297]
+      change from noiseless: tr_raw -0.002 [-0.002, -0.002], tr_cal -0.033 [-0.035, -0.032], unet_mean_over_seeds -0.094 [-0.099, -0.089]
+  64 sensors, PSNR (n=200): raw TR 21.28 [20.98, 21.60] | cal TR 28.92 [28.63, 29.21] | U-Net 31.70 [31.37, 32.05] (5 networks: 29.42-33.20, sd 1.55) | U-Net - cal TR 2.78 [2.45, 3.11]
+      change from noiseless: tr_raw -0.00 [-0.01, -0.00], tr_cal -0.35 [-0.36, -0.34], unet_mean_over_seeds -0.82 [-0.88, -0.76]
+  64 sensors, SSIM (n=200): raw TR 0.678 [0.667, 0.691] | cal TR 0.442 [0.431, 0.453] | U-Net 0.653 [0.639, 0.667] (5 networks: 0.494-0.840, sd 0.124) | U-Net - cal TR 0.211 [0.190, 0.232]
+      change from noiseless: tr_raw -0.006 [-0.006, -0.006], tr_cal -0.026 [-0.027, -0.025], unet_mean_over_seeds -0.054 [-0.056, -0.051]
+== noise severe (relative std 0.5)
+  16 sensors, PSNR (n=200): raw TR 19.86 [19.55, 20.16] | cal TR 23.95 [23.68, 24.20] | U-Net 27.10 [26.89, 27.30] (5 networks: 24.77-29.19, sd 1.91) | U-Net - cal TR 3.15 [2.94, 3.36]
+      change from noiseless: tr_raw -0.00 [-0.00, -0.00], tr_cal -3.00 [-3.10, -2.89], unet_mean_over_seeds -4.74 [-4.97, -4.52]
+  16 sensors, SSIM (n=200): raw TR 0.773 [0.762, 0.784] | cal TR 0.225 [0.221, 0.229] | U-Net 0.385 [0.378, 0.392] (5 networks: 0.277-0.478, sd 0.098) | U-Net - cal TR 0.161 [0.150, 0.170]
+      change from noiseless: tr_raw -0.011 [-0.012, -0.010], tr_cal -0.105 [-0.109, -0.100], unet_mean_over_seeds -0.285 [-0.297, -0.272]
+  64 sensors, PSNR (n=200): raw TR 21.26 [20.95, 21.57] | cal TR 27.46 [27.17, 27.75] | U-Net 29.54 [29.28, 29.80] (5 networks: 26.75-31.37, sd 1.90) | U-Net - cal TR 2.08 [1.82, 2.33]
+      change from noiseless: tr_raw -0.03 [-0.03, -0.02], tr_cal -1.81 [-1.86, -1.76], unet_mean_over_seeds -2.98 [-3.15, -2.83]
+  64 sensors, SSIM (n=200): raw TR 0.649 [0.637, 0.662] | cal TR 0.365 [0.356, 0.374] | U-Net 0.526 [0.515, 0.536] (5 networks: 0.335-0.728, sd 0.142) | U-Net - cal TR 0.161 [0.143, 0.177]
+      change from noiseless: tr_raw -0.035 [-0.037, -0.034], tr_cal -0.102 [-0.105, -0.099], unet_mean_over_seeds -0.181 [-0.189, -0.173]

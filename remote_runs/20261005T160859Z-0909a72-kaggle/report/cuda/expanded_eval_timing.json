@@ -1,0 +1,11 @@
+{
+  "device": "cuda",
+  "end_to_end_seconds": 14.716633796691895,
+  "forward_clean_seconds": 0.0,
+  "metrics_seconds": 5.275691904999803,
+  "note": "U-Net inference is synchronised on accelerators; forward and time-reversal times are j-Wave on CPU and include JAX compilation",
+  "time_reversal_seconds": 0.0,
+  "tr_cache_used": true,
+  "training_seconds": 0.0,
+  "unet_inference_seconds": 2.551587097000265
+}

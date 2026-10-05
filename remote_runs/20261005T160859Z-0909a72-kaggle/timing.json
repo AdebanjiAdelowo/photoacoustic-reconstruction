@@ -1,0 +1,155 @@
+{
+  "data": {
+    "forward_seconds": 135.76231292099874,
+    "n_images": 456,
+    "note": "j-Wave on CPU; includes JAX compilation",
+    "time_reversal_seconds": 127.42422294899916
+  },
+  "end_to_end_seconds": 1260.0054844729993,
+  "evaluation": {
+    "cpu": {
+      "device": "cpu",
+      "end_to_end_seconds": 819.2114531993866,
+      "forward_clean_seconds": 109.28978787100004,
+      "metrics_seconds": 5.699805205999837,
+      "note": "U-Net inference is synchronised on accelerators; forward and time-reversal times are j-Wave on CPU and include JAX compilation",
+      "time_reversal_seconds": 625.0267352589999,
+      "tr_cache_used": false,
+      "training_seconds": 0.0,
+      "unet_inference_seconds": 71.5174590659999
+    },
+    "cuda": {
+      "device": "cuda",
+      "end_to_end_seconds": 14.716633796691895,
+      "forward_clean_seconds": 0.0,
+      "metrics_seconds": 5.275691904999803,
+      "note": "U-Net inference is synchronised on accelerators; forward and time-reversal times are j-Wave on CPU and include JAX compilation",
+      "time_reversal_seconds": 0.0,
+      "tr_cache_used": true,
+      "training_seconds": 0.0,
+      "unet_inference_seconds": 2.551587097000265
+    }
+  },
+  "interpretation": "U-Net training and inference times compare the two arms on this machine. End-to-end time also contains the CPU physics, which is the same work for both.",
+  "training": {
+    "cpu": {
+      "seed0": {
+        "best_epoch": 53,
+        "best_val_loss": 0.000483542971778661,
+        "cuda_memory": null,
+        "first_epoch_seconds": 0.5249788150003951,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.47902666415247025,
+        "synchronized": false,
+        "total_seconds": 28.78762754499985
+      },
+      "seed1": {
+        "best_epoch": 59,
+        "best_val_loss": 0.0007172075565904379,
+        "cuda_memory": null,
+        "first_epoch_seconds": 0.5044265189999351,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.48126455344062363,
+        "synchronized": false,
+        "total_seconds": 28.899125701999765
+      },
+      "seed2": {
+        "best_epoch": 53,
+        "best_val_loss": 0.00038152188062667847,
+        "cuda_memory": null,
+        "first_epoch_seconds": 0.47684246500011795,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.4862040379151857,
+        "synchronized": false,
+        "total_seconds": 29.16298492399983
+      },
+      "seed3": {
+        "best_epoch": 57,
+        "best_val_loss": 0.0006141965859569609,
+        "cuda_memory": null,
+        "first_epoch_seconds": 0.4990651340003751,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.48036080361022976,
+        "synchronized": false,
+        "total_seconds": 28.84044148599969
+      },
+      "seed4": {
+        "best_epoch": 59,
+        "best_val_loss": 0.0007199321989901364,
+        "cuda_memory": null,
+        "first_epoch_seconds": 0.4747583210000812,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.46489356271185744,
+        "synchronized": false,
+        "total_seconds": 27.90356682699985
+      }
+    },
+    "cuda": {
+      "seed0": {
+        "best_epoch": 54,
+        "best_val_loss": 0.00048106652684509754,
+        "cuda_memory": {
+          "peak_allocated_bytes": 75848192,
+          "peak_reserved_bytes": 123731968
+        },
+        "first_epoch_seconds": 0.4962526760000401,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.05352551293222952,
+        "synchronized": true,
+        "total_seconds": 3.6543296449999616
+      },
+      "seed1": {
+        "best_epoch": 56,
+        "best_val_loss": 0.0007126097334548831,
+        "cuda_memory": {
+          "peak_allocated_bytes": 75848192,
+          "peak_reserved_bytes": 123731968
+        },
+        "first_epoch_seconds": 0.05546184600007109,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.05402873679661953,
+        "synchronized": true,
+        "total_seconds": 3.2432216760007577
+      },
+      "seed2": {
+        "best_epoch": 57,
+        "best_val_loss": 0.000366927997674793,
+        "cuda_memory": {
+          "peak_allocated_bytes": 75848192,
+          "peak_reserved_bytes": 123731968
+        },
+        "first_epoch_seconds": 0.055013033999784966,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.05442958347456455,
+        "synchronized": true,
+        "total_seconds": 3.266411791999417
+      },
+      "seed3": {
+        "best_epoch": 57,
+        "best_val_loss": 0.0006530375685542822,
+        "cuda_memory": {
+          "peak_allocated_bytes": 75848192,
+          "peak_reserved_bytes": 123731968
+        },
+        "first_epoch_seconds": 0.055011419000038586,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.05344010633894344,
+        "synchronized": true,
+        "total_seconds": 3.2080275739999706
+      },
+      "seed4": {
+        "best_epoch": 59,
+        "best_val_loss": 0.0007302799494937062,
+        "cuda_memory": {
+          "peak_allocated_bytes": 75848192,
+          "peak_reserved_bytes": 123731968
+        },
+        "first_epoch_seconds": 0.05511104400011391,
+        "includes": "optimiser steps, validation pass and checkpoint writes",
+        "later_epochs_mean_seconds": 0.05272496303386707,
+        "synchronized": true,
+        "total_seconds": 3.165973991000101
+      }
+    }
+  }
+}

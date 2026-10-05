@@ -1,0 +1,220 @@
+{
+  "dataset": {
+    "test.npz": {
+      "arrays": {
+        "n_sensors": [
+          [
+            8
+          ],
+          "int32"
+        ],
+        "phantom": [
+          [
+            8,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "recon": [
+          [
+            8,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "seed": [
+          [
+            8
+          ],
+          "int64"
+        ]
+      },
+      "bytes": 263240,
+      "sha256": "c2e4f697206498746f4de58820d9d4d82dadce26459cd7da5a29971df50e306e"
+    },
+    "test_expanded.npz": {
+      "arrays": {
+        "n_sensors": [
+          [
+            400
+          ],
+          "int32"
+        ],
+        "phantom": [
+          [
+            400,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "recon": [
+          [
+            400,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "seed": [
+          [
+            400
+          ],
+          "int64"
+        ]
+      },
+      "bytes": 13113000,
+      "sha256": "826a016f9d755ae095835fefff72c9044cafcf7fc3a1bcb800779b2762990321"
+    },
+    "train.npz": {
+      "arrays": {
+        "n_sensors": [
+          [
+            40
+          ],
+          "int32"
+        ],
+        "phantom": [
+          [
+            40,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "recon": [
+          [
+            40,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "seed": [
+          [
+            40
+          ],
+          "int64"
+        ]
+      },
+      "bytes": 1312200,
+      "sha256": "6bbc13a6af563ca6db87840c54307077d2647211b9aad313152c70deebc03e2d"
+    },
+    "val.npz": {
+      "arrays": {
+        "n_sensors": [
+          [
+            8
+          ],
+          "int32"
+        ],
+        "phantom": [
+          [
+            8,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "recon": [
+          [
+            8,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "seed": [
+          [
+            8
+          ],
+          "int64"
+        ]
+      },
+      "bytes": 263240,
+      "sha256": "aac46f78947099f7594f2705aa6256fc7281a54af2f72b5ef75056223ccf0e82"
+    }
+  },
+  "devices": {
+    "cpu": {
+      "cuda_available": true,
+      "cudnn_version": null,
+      "gpu_name": null,
+      "mps_available": false,
+      "platform": "Linux-6.18.48+-x86_64-with-glibc2.39",
+      "python_version": "3.13.15",
+      "requested_device": "cpu",
+      "resolved_device": "cpu",
+      "torch_cuda_version": "12.8",
+      "torch_version": "2.11.0+cu128"
+    },
+    "cuda": {
+      "cuda_available": true,
+      "cudnn_version": 91900,
+      "gpu_name": "Tesla T4",
+      "mps_available": false,
+      "platform": "Linux-6.18.48+-x86_64-with-glibc2.39",
+      "python_version": "3.13.15",
+      "requested_device": "cuda",
+      "resolved_device": "cuda",
+      "torch_cuda_version": "12.8",
+      "torch_version": "2.11.0+cu128"
+    }
+  },
+  "git_commit": "0909a7234abca4f13698d256dc6f5a3814ec0c8e",
+  "git_dirty": false,
+  "jax_cpu_only": true,
+  "jax_default_backend": "cpu",
+  "jax_devices": [
+    "TFRT_CPU_0"
+  ],
+  "jax_enable_x64": false,
+  "jax_platforms_env": "cpu",
+  "jax_version": "0.4.38",
+  "numpy_version": "2.4.6",
+  "plan": {
+    "arms": [
+      "cpu",
+      "cuda"
+    ],
+    "checkpoint_dirs": {
+      "cpu": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/checkpoints/cpu",
+      "cuda": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/checkpoints/cuda"
+    },
+    "comparison_dir": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/report/comparison",
+    "data_dir": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/data",
+    "excluded": [
+      "tikhonov_evaluation.py",
+      "tikhonov_diagnostics.py",
+      "model_mismatch_evaluation.py"
+    ],
+    "mvp_dirs": {
+      "cpu": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/report/cpu/mvp_seed0",
+      "cuda": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/report/cuda/mvp_seed0"
+    },
+    "physics": "j-Wave/JAX on CPU, generated once and shared by both arms",
+    "report_dirs": {
+      "cpu": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/report/cpu",
+      "cuda": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/report/cuda"
+    },
+    "run_dir": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle",
+    "seeds": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "tr_cache": "/kaggle/working/results/20261005T160859Z-0909a72-kaggle/data/tr_by_noise_level.npz",
+    "workload": {
+      "forward_simulations": 856,
+      "metric_images_per_arm": 14000,
+      "optimiser_steps_per_arm": 1500,
+      "time_reversals": 2456
+    }
+  },
+  "protocol": "scripts/expanded_evaluation.py, unchanged; reference checkpoint not scored",
+  "time_reversal_identical_in_both_arms": true
+}

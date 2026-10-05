@@ -1,0 +1,195 @@
+{
+  "best_epoch": 57,
+  "best_val_loss": 0.000366927997674793,
+  "checkpoint": "unet_seed2.pt",
+  "cuda_available": true,
+  "cuda_memory": {
+    "peak_allocated_bytes": 75848192,
+    "peak_reserved_bytes": 123731968
+  },
+  "cudnn_version": 91900,
+  "dataset": {
+    "train.npz": {
+      "arrays": {
+        "n_sensors": [
+          [
+            40
+          ],
+          "int32"
+        ],
+        "phantom": [
+          [
+            40,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "recon": [
+          [
+            40,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "seed": [
+          [
+            40
+          ],
+          "int64"
+        ]
+      },
+      "bytes": 1312200,
+      "sha256": "6bbc13a6af563ca6db87840c54307077d2647211b9aad313152c70deebc03e2d"
+    },
+    "val.npz": {
+      "arrays": {
+        "n_sensors": [
+          [
+            8
+          ],
+          "int32"
+        ],
+        "phantom": [
+          [
+            8,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "recon": [
+          [
+            8,
+            64,
+            64
+          ],
+          "float32"
+        ],
+        "seed": [
+          [
+            8
+          ],
+          "int64"
+        ]
+      },
+      "bytes": 263240,
+      "sha256": "aac46f78947099f7594f2705aa6256fc7281a54af2f72b5ef75056223ccf0e82"
+    }
+  },
+  "determinism": {
+    "CUBLAS_WORKSPACE_CONFIG": ":4096:8",
+    "amp": false,
+    "channels_last": false,
+    "cudnn_benchmark": false,
+    "cudnn_deterministic": true,
+    "deterministic_algorithms": true,
+    "tf32_cudnn": false,
+    "tf32_matmul": false
+  },
+  "git_commit": "0909a7234abca4f13698d256dc6f5a3814ec0c8e",
+  "git_dirty": false,
+  "gpu_name": "Tesla T4",
+  "jax_cpu_only": true,
+  "jax_default_backend": "cpu",
+  "jax_devices": [
+    "TFRT_CPU_0"
+  ],
+  "jax_enable_x64": false,
+  "jax_platforms_env": "cpu",
+  "jax_version": "0.4.38",
+  "model": {
+    "base_features": 16,
+    "class": "ReconstructionUNet",
+    "dtype": "torch.float32",
+    "parameter_count": 481745
+  },
+  "mps_available": false,
+  "platform": "Linux-6.18.48+-x86_64-with-glibc2.39",
+  "python_version": "3.13.15",
+  "requested_device": "cuda",
+  "resolved_device": "cuda",
+  "seed": 2,
+  "timing": {
+    "epoch_seconds": [
+      0.055013033999784966,
+      0.05370743100047548,
+      0.05377950599995529,
+      0.05429693599944585,
+      0.0541728130001502,
+      0.05385122500047146,
+      0.059376502000304754,
+      0.053317204999984824,
+      0.04936871900008555,
+      0.05027930399955949,
+      0.057365161000234366,
+      0.05679406699982792,
+      0.08985034199940856,
+      0.06138304599971889,
+      0.058657888000198,
+      0.05720553699939046,
+      0.05991706299937505,
+      0.0576471730000776,
+      0.056770332000269264,
+      0.04987805000018852,
+      0.053339484999924025,
+      0.05434184200021264,
+      0.04970947499987233,
+      0.052071199000238266,
+      0.05348997100009001,
+      0.04909439499988366,
+      0.05306397700041998,
+      0.05440239000017755,
+      0.054473161000714754,
+      0.05328222400021332,
+      0.05410202699931688,
+      0.06085505299961369,
+      0.056869574999836914,
+      0.054632065000078,
+      0.05454276100044808,
+      0.05422193899994454,
+      0.05437790199994197,
+      0.04992498899991915,
+      0.053782355000294046,
+      0.05021961599959468,
+      0.05328602400004456,
+      0.05835209099950589,
+      0.05408543700013979,
+      0.05389714200009621,
+      0.054329642999618954,
+      0.054542971999580914,
+      0.05435524600034114,
+      0.05413519000012457,
+      0.054427572000349755,
+      0.05035283699999127,
+      0.04890595600045344,
+      0.05607728399991174,
+      0.05604306799978076,
+      0.04983133399946382,
+      0.04993430099966645,
+      0.04916634399978648,
+      0.04912477400011994,
+      0.05354245200032892,
+      0.049593443000048865,
+      0.04894761400009884
+    ],
+    "first_epoch_seconds": 0.055013033999784966,
+    "includes": "optimiser steps, validation pass and checkpoint writes",
+    "later_epochs_mean_seconds": 0.05442958347456455,
+    "synchronized": true,
+    "total_seconds": 3.266411791999417
+  },
+  "torch_cuda_version": "12.8",
+  "torch_version": "2.11.0+cu128",
+  "training": {
+    "batch_size": 8,
+    "checkpoint_selection": "lowest validation loss",
+    "epochs": 60,
+    "loss": "MSELoss",
+    "lr": 0.001,
+    "n_train": 40,
+    "n_val": 8,
+    "optimizer": "Adam"
+  }
+}

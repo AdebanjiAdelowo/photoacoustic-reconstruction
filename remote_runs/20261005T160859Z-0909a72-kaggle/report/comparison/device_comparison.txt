@@ -1,0 +1,109 @@
+Device comparison: arm A = cpu, arm B = cuda; 400 test images, networks seed0, seed1, seed2, seed3, seed4
+Time reversal identical in both arms: True
+Agreement between devices is statistical, not bitwise. Timing is reported separately.
+
+== noise noiseless
+  16 sensors PSNR:
+    cpu   per network 32.86 30.91 32.69 31.59 31.04 | mean 31.82 sd 0.91 | U-Net - cal TR +4.87 [+4.52, +5.20]
+    cuda  per network 32.82 30.84 33.01 31.53 31.01 | mean 31.84 sd 1.01 | U-Net - cal TR +4.90 [+4.54, +5.23]
+    cuda - cpu: per network -0.05 -0.07 +0.32 -0.05 -0.03 | network average +0.02 [-0.01, +0.06]
+    published (other machine, CPU): mean 31.84 [31.48, 32.21], networks 30.93 to 32.84, sd 0.92; cpu -0.03, cuda -0.00; device difference within one published network sd: True
+  16 sensors SSIM:
+    cpu   per network 0.668 0.604 0.795 0.637 0.653 | mean 0.671 sd 0.073 | U-Net - cal TR +0.342 [+0.322, +0.361]
+    cuda  per network 0.669 0.598 0.797 0.635 0.653 | mean 0.670 sd 0.076 | U-Net - cal TR +0.341 [+0.321, +0.361]
+    cuda - cpu: per network +0.001 -0.007 +0.002 -0.001 -0.001 | network average -0.001 [-0.003, +0.001]
+    published (other machine, CPU): mean 0.668 [0.650, 0.685], networks 0.607 to 0.785, sd 0.070; cpu +0.003, cuda +0.002; device difference within one published network sd: True
+  64 sensors PSNR:
+    cpu   per network 33.26 31.59 33.26 32.84 31.34 | mean 32.46 sd 0.93 | U-Net - cal TR +3.19 [+2.82, +3.56]
+    cuda  per network 33.51 31.12 33.74 32.91 31.32 | mean 32.52 sd 1.23 | U-Net - cal TR +3.25 [+2.87, +3.63]
+    cuda - cpu: per network +0.24 -0.47 +0.47 +0.07 -0.02 | network average +0.06 [+0.02, +0.09]
+    published (other machine, CPU): mean 32.48 [32.09, 32.88], networks 31.19 to 33.57, sd 1.14; cpu -0.02, cuda +0.04; device difference within one published network sd: True
+  64 sensors SSIM:
+    cpu   per network 0.655 0.649 0.859 0.731 0.650 | mean 0.709 sd 0.091 | U-Net - cal TR +0.242 [+0.219, +0.264]
+    cuda  per network 0.663 0.636 0.865 0.720 0.650 | mean 0.707 sd 0.094 | U-Net - cal TR +0.239 [+0.216, +0.262]
+    cuda - cpu: per network +0.008 -0.014 +0.005 -0.011 -0.000 | network average -0.002 [-0.005, +0.000]
+    published (other machine, CPU): mean 0.709 [0.694, 0.725], networks 0.650 to 0.857, sd 0.087; cpu +0.000, cuda -0.002; device difference within one published network sd: True
+== noise low
+  16 sensors PSNR:
+    cpu   per network 32.86 30.90 32.68 31.58 31.03 | mean 31.81 sd 0.91 | U-Net - cal TR +4.87 [+4.52, +5.20]
+    cuda  per network 32.81 30.83 33.00 31.52 31.01 | mean 31.83 sd 1.01 | U-Net - cal TR +4.89 [+4.54, +5.22]
+    cuda - cpu: per network -0.04 -0.08 +0.32 -0.05 -0.03 | network average +0.02 [-0.01, +0.06]
+    published (other machine, CPU): mean 31.84 [31.47, 32.20], networks 30.92 to 32.83, sd 0.92; cpu -0.03, cuda -0.00; device difference within one published network sd: True
+  16 sensors SSIM:
+    cpu   per network 0.668 0.604 0.795 0.636 0.653 | mean 0.671 sd 0.073 | U-Net - cal TR +0.342 [+0.322, +0.361]
+    cuda  per network 0.669 0.597 0.797 0.635 0.652 | mean 0.670 sd 0.076 | U-Net - cal TR +0.341 [+0.321, +0.361]
+    cuda - cpu: per network +0.001 -0.007 +0.002 -0.001 -0.001 | network average -0.001 [-0.003, +0.001]
+    published (other machine, CPU): mean 0.668 [0.650, 0.685], networks 0.606 to 0.784, sd 0.070; cpu +0.003, cuda +0.002; device difference within one published network sd: True
+  64 sensors PSNR:
+    cpu   per network 33.26 31.59 33.26 32.84 31.34 | mean 32.46 sd 0.93 | U-Net - cal TR +3.19 [+2.82, +3.56]
+    cuda  per network 33.51 31.11 33.74 32.90 31.32 | mean 32.52 sd 1.23 | U-Net - cal TR +3.25 [+2.87, +3.62]
+    cuda - cpu: per network +0.24 -0.47 +0.48 +0.07 -0.02 | network average +0.06 [+0.02, +0.09]
+    published (other machine, CPU): mean 32.47 [32.09, 32.88], networks 31.19 to 33.57, sd 1.14; cpu -0.02, cuda +0.04; device difference within one published network sd: True
+  64 sensors SSIM:
+    cpu   per network 0.655 0.649 0.859 0.731 0.650 | mean 0.709 sd 0.091 | U-Net - cal TR +0.241 [+0.219, +0.264]
+    cuda  per network 0.663 0.635 0.865 0.720 0.650 | mean 0.707 sd 0.094 | U-Net - cal TR +0.239 [+0.216, +0.262]
+    cuda - cpu: per network +0.008 -0.014 +0.005 -0.011 -0.000 | network average -0.002 [-0.005, +0.000]
+    published (other machine, CPU): mean 0.709 [0.693, 0.725], networks 0.650 to 0.857, sd 0.087; cpu +0.000, cuda -0.002; device difference within one published network sd: True
+== noise moderate
+  16 sensors PSNR:
+    cpu   per network 32.78 30.73 32.57 31.38 30.98 | mean 31.69 sd 0.94 | U-Net - cal TR +4.79 [+4.45, +5.12]
+    cuda  per network 32.74 30.62 32.89 31.33 30.95 | mean 31.71 sd 1.05 | U-Net - cal TR +4.81 [+4.47, +5.13]
+    cuda - cpu: per network -0.04 -0.11 +0.32 -0.05 -0.03 | network average +0.02 [-0.02, +0.05]
+    published (other machine, CPU): mean 31.71 [31.36, 32.07], networks 30.72 to 32.73, sd 0.95; cpu -0.03, cuda -0.01; device difference within one published network sd: True
+  16 sensors SSIM:
+    cpu   per network 0.664 0.588 0.788 0.624 0.650 | mean 0.663 sd 0.076 | U-Net - cal TR +0.336 [+0.317, +0.356]
+    cuda  per network 0.666 0.581 0.790 0.623 0.650 | mean 0.662 sd 0.079 | U-Net - cal TR +0.335 [+0.316, +0.355]
+    cuda - cpu: per network +0.002 -0.007 +0.003 -0.001 -0.001 | network average -0.001 [-0.003, +0.001]
+    published (other machine, CPU): mean 0.660 [0.643, 0.677], networks 0.591 to 0.778, sd 0.073; cpu +0.003, cuda +0.002; device difference within one published network sd: True
+  64 sensors PSNR:
+    cpu   per network 33.23 31.42 33.22 32.77 31.32 | mean 32.39 sd 0.95 | U-Net - cal TR +3.15 [+2.78, +3.52]
+    cuda  per network 33.47 30.94 33.70 32.83 31.30 | mean 32.45 sd 1.26 | U-Net - cal TR +3.21 [+2.83, +3.58]
+    cuda - cpu: per network +0.24 -0.48 +0.48 +0.06 -0.02 | network average +0.06 [+0.02, +0.09]
+    published (other machine, CPU): mean 32.41 [32.02, 32.81], networks 31.02 to 33.53, sd 1.17; cpu -0.01, cuda +0.04; device difference within one published network sd: True
+  64 sensors SSIM:
+    cpu   per network 0.654 0.633 0.858 0.728 0.649 | mean 0.704 sd 0.093 | U-Net - cal TR +0.239 [+0.216, +0.261]
+    cuda  per network 0.662 0.620 0.863 0.717 0.649 | mean 0.702 sd 0.097 | U-Net - cal TR +0.236 [+0.214, +0.259]
+    cuda - cpu: per network +0.008 -0.013 +0.006 -0.011 -0.000 | network average -0.002 [-0.005, +0.000]
+    published (other machine, CPU): mean 0.704 [0.689, 0.720], networks 0.637 to 0.855, sd 0.090; cpu -0.000, cuda -0.002; device difference within one published network sd: True
+== noise high
+  16 sensors PSNR:
+    cpu   per network 31.86 28.96 31.35 29.20 30.21 | mean 30.32 sd 1.28 | U-Net - cal TR +4.02 [+3.74, +4.31]
+    cuda  per network 31.84 28.77 31.65 29.15 30.16 | mean 30.32 sd 1.40 | U-Net - cal TR +4.02 [+3.74, +4.30]
+    cuda - cpu: per network -0.02 -0.19 +0.30 -0.04 -0.04 | network average +0.00 [-0.03, +0.03]
+    published (other machine, CPU): mean 30.33 [30.04, 30.62], networks 28.90 to 31.86, sd 1.30; cpu -0.02, cuda -0.02; device difference within one published network sd: True
+  16 sensors SSIM:
+    cpu   per network 0.615 0.460 0.705 0.497 0.607 | mean 0.577 sd 0.098 | U-Net - cal TR +0.281 [+0.264, +0.297]
+    cuda  per network 0.622 0.449 0.711 0.494 0.605 | mean 0.576 sd 0.105 | U-Net - cal TR +0.280 [+0.264, +0.297]
+    cuda - cpu: per network +0.007 -0.011 +0.006 -0.002 -0.001 | network average -0.000 [-0.001, +0.001]
+    published (other machine, CPU): mean 0.575 [0.562, 0.589], networks 0.460 to 0.693, sd 0.097; cpu +0.001, cuda +0.001; device difference within one published network sd: True
+  64 sensors PSNR:
+    cpu   per network 32.80 29.83 32.74 31.87 31.02 | mean 31.65 sd 1.25 | U-Net - cal TR +2.74 [+2.40, +3.06]
+    cuda  per network 32.99 29.42 33.20 31.91 30.99 | mean 31.70 sd 1.55 | U-Net - cal TR +2.78 [+2.45, +3.11]
+    cuda - cpu: per network +0.18 -0.40 +0.45 +0.04 -0.03 | network average +0.05 [+0.02, +0.08]
+    published (other machine, CPU): mean 31.67 [31.32, 32.01], networks 29.52 to 33.02, sd 1.46; cpu -0.01, cuda +0.04; device difference within one published network sd: True
+  64 sensors SSIM:
+    cpu   per network 0.624 0.507 0.832 0.673 0.634 | mean 0.654 sd 0.117 | U-Net - cal TR +0.212 [+0.191, +0.233]
+    cuda  per network 0.634 0.494 0.840 0.665 0.633 | mean 0.653 sd 0.124 | U-Net - cal TR +0.211 [+0.190, +0.232]
+    cuda - cpu: per network +0.009 -0.013 +0.008 -0.008 -0.001 | network average -0.001 [-0.003, +0.001]
+    published (other machine, CPU): mean 0.653 [0.639, 0.667], networks 0.509 to 0.831, sd 0.115; cpu +0.001, cuda -0.000; device difference within one published network sd: True
+== noise severe
+  16 sensors PSNR:
+    cpu   per network 29.18 25.67 28.35 24.83 27.49 | mean 27.10 sd 1.82 | U-Net - cal TR +3.16 [+2.94, +3.37]
+    cuda  per network 29.19 25.51 28.60 24.77 27.43 | mean 27.10 sd 1.91 | U-Net - cal TR +3.15 [+2.94, +3.36]
+    cuda - cpu: per network +0.01 -0.16 +0.25 -0.06 -0.06 | network average -0.00 [-0.02, +0.01]
+    published (other machine, CPU): mean 27.10 [26.89, 27.30], networks 24.85 to 29.24, sd 1.82; cpu +0.00, cuda -0.00; device difference within one published network sd: True
+  16 sensors SSIM:
+    cpu   per network 0.459 0.287 0.466 0.289 0.415 | mean 0.383 sd 0.089 | U-Net - cal TR +0.158 [+0.149, +0.168]
+    cuda  per network 0.470 0.277 0.478 0.286 0.416 | mean 0.385 sd 0.098 | U-Net - cal TR +0.161 [+0.150, +0.170]
+    cuda - cpu: per network +0.011 -0.011 +0.012 -0.003 +0.001 | network average +0.002 [+0.001, +0.003]
+    published (other machine, CPU): mean 0.383 [0.376, 0.390], networks 0.285 to 0.475, sd 0.090; cpu -0.000, cuda +0.002; device difference within one published network sd: True
+  64 sensors PSNR:
+    cpu   per network 31.15 27.01 30.97 28.79 29.65 | mean 29.52 sd 1.71 | U-Net - cal TR +2.06 [+1.79, +2.31]
+    cuda  per network 31.19 26.75 31.37 28.78 29.59 | mean 29.54 sd 1.90 | U-Net - cal TR +2.08 [+1.82, +2.33]
+    cuda - cpu: per network +0.04 -0.25 +0.40 -0.01 -0.06 | network average +0.02 [+0.00, +0.04]
+    published (other machine, CPU): mean 29.50 [29.24, 29.77], networks 26.87 to 31.18, sd 1.79; cpu +0.01, cuda +0.03; device difference within one published network sd: True
+  64 sensors SSIM:
+    cpu   per network 0.531 0.346 0.715 0.476 0.550 | mean 0.524 sd 0.133 | U-Net - cal TR +0.159 [+0.141, +0.175]
+    cuda  per network 0.541 0.335 0.728 0.476 0.549 | mean 0.526 sd 0.142 | U-Net - cal TR +0.161 [+0.143, +0.177]
+    cuda - cpu: per network +0.009 -0.011 +0.013 -0.000 -0.001 | network average +0.002 [+0.001, +0.003]
+    published (other machine, CPU): mean 0.522 [0.512, 0.531], networks 0.345 to 0.708, sd 0.133; cpu +0.002, cuda +0.004; device difference within one published network sd: True

@@ -1,0 +1,23 @@
+Evaluation Results (PSNR/SSIM, time-reversal vs. U-Net)
+NOTE: newly trained network (seed 0, device cuda, remote run 20261005T160859Z-0909a72-kaggle); this is NOT the original MPS checkpoint behind report/mvp_results.txt
+Checkpoint: epoch 54, val_loss 0.000481
+Test set size: 8
+
+sparsity  n   TR PSNR     TR SSIM     Learned PSNR  Learned SSIM  
+16        4   18.966      0.7055      30.515        0.4888        
+64        4   22.434      0.7345      33.407        0.4932        
+
+--- PSNR/SSIM disagreement, diagnosed automatically (example 0) ---
+Learned model wins decisively on PSNR at both sparsity settings, but loses on
+whole-image SSIM. Region-masked breakdown, computed fresh each run:
+
+  SSIM inside true structure (gt>0.05): TR=0.188  Learned=0.939
+  SSIM in background (96% of image area): TR=0.870  Learned=0.383
+
+Interpretation: the learned model is dramatically better where the signal
+actually is, but introduces a small residual background "haze" that SSIM's
+local-variance sensitivity penalises heavily; since background dominates image
+area, this inverts the whole-image SSIM ranking despite the large real PSNR and
+visual win. A known failure mode of MSE-trained restoration networks, not a bug
+in this evaluation (see report/mvp_ssim_diagnosis.png). Not fixed in this MVP —
+a background/sparsity-promoting loss term is a plausible future extension.
