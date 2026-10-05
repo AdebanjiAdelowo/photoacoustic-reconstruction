@@ -41,6 +41,22 @@ def disc_phantom(rng, n_discs, size=U.GRID_SIZE):
     return (img / img.max()).astype(np.float32)
 
 
+def build_families():
+    """The three image families of this check and the sensor count of each image."""
+    rng = np.random.default_rng(SEED)
+    families = {
+        "1 to 3 Gaussian blobs (training family)": [random_blob_phantom(U.GRID_SIZE, 700_000 + i, int(rng.integers(1, 4)))
+                                                    for i in range(N_PER_FAMILY)],
+        "8 Gaussian blobs": [random_blob_phantom(U.GRID_SIZE, 710_000 + i, 8) for i in range(N_PER_FAMILY)],
+        "2 or 3 sharp-edged discs": [disc_phantom(rng, int(rng.integers(2, 4))) for _ in range(N_PER_FAMILY)],
+    }
+    return families, np.array(list(U.SENSOR_COUNTS) * (N_PER_FAMILY // 2))
+
+
+def noisy_recordings(clean, rel_std):
+    return U.add_relative_noise(clean, [rel_std] * len(clean), np.random.default_rng(SEED + int(rel_std * 100)))
+
+
 def main():
     device = U.get_device("cpu")
     physics = U.Physics(device)
@@ -50,14 +66,7 @@ def main():
               for v in U.VARIANTS for s in U.TRAIN_SEEDS}
     with open("report/tikhonov_results.json") as f:
         selection = json.load(f)["selection"]
-    rng = np.random.default_rng(SEED)
-    families = {
-        "1 to 3 Gaussian blobs (training family)": [random_blob_phantom(U.GRID_SIZE, 700_000 + i, int(rng.integers(1, 4)))
-                                                    for i in range(N_PER_FAMILY)],
-        "8 Gaussian blobs": [random_blob_phantom(U.GRID_SIZE, 710_000 + i, 8) for i in range(N_PER_FAMILY)],
-        "2 or 3 sharp-edged discs": [disc_phantom(rng, int(rng.integers(2, 4))) for _ in range(N_PER_FAMILY)],
-    }
-    n_s = np.array(list(U.SENSOR_COUNTS) * (N_PER_FAMILY // 2))
+    families, n_s = build_families()
     L = ["Generalisation check for the unrolled Tikhonov networks (scripts/unrolled_generalisation_check.py)", "",
          __doc__.split("Output:")[0].strip(), "",
          "Mean over 10 images per row; unrolled values are also averaged over the 5 networks. PSNR in dB / SSIM.", ""]
@@ -66,7 +75,7 @@ def main():
         clean = U.recordings(phantoms, n_s, domain, medium, sensors)
         L.append(name)
         for label, rel_std in LEVELS:
-            Y = U.add_relative_noise(clean, [rel_std] * len(clean), np.random.default_rng(SEED + int(rel_std * 100)))
+            Y = noisy_recordings(clean, rel_std)
             out = U.reconstruct(models, physics, Y, n_s)
             for k in U.SENSOR_COUNTS:
                 m = np.nonzero(n_s == k)[0]

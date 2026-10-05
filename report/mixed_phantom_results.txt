@@ -1,0 +1,533 @@
+Mixed-phantom training of the unrolled Tikhonov network (scripts/mixed_phantom_experiment.py)
+
+Does the unrolled Tikhonov network keep an advantage over Tikhonov with a less restrictive prior?
+
+The networks of scripts/unrolled_evaluation.py were trained on 1 to 3 smooth Gaussian blobs and lose
+their lead over Tikhonov on sharp-edged discs. Here the same architecture and training recipe are
+used with a broader training distribution, and everything is scored against the blob-trained
+networks, which remain the baseline. Nothing existing is retrained, regenerated or overwritten.
+
+Protocol (fixed before any result of this experiment was seen):
+  * Training distribution: four families in equal parts (src/shape_phantoms.py): smooth blobs,
+    sharp-edged discs, sharp-edged rotated ellipses and sharp-edged rotated rectangles. Sensor counts
+    are balanced within each family. Phantom seeds 200000+ (training) and 210000+ (validation).
+  * Two mixed training sets, 5 networks each (seeds 0-4), both with the noise-augmented recipe of
+    unrolled_evaluation.py (noise level drawn at random per recording and epoch):
+      - "mixed40":  40 training and 8 validation images, 200 epochs: the data budget of the
+                    baseline, so each family has a quarter of the baseline's blob count;
+      - "mixed160": 160 training and 32 validation images, 50 epochs: as many images per family as
+                    the baseline has blobs, and the same 1000 optimiser steps.
+    The mixed40 images are the first 40 of the mixed160 images.
+  * Baseline: the 5 blob-trained, noise-trained networks (experiments/unrolled/noise_seed*.pt).
+  * Test sets:
+      A. the 400-image blob test set with its noise draws, unchanged (cost of leaving the
+         specialised prior), and its sound-speed mismatch data;
+      B. the three families of scripts/unrolled_generalisation_check.py, unchanged (20 images each);
+      C. new: 100 images (50 per sensor count) from each of the four training families and from a
+         fifth family that no network has seen, thin curved vessel-like lines. Phantom seeds
+         300000+, all five noise levels, noise seeds independent of training.
+  * Tikhonov: on A and B the published weights (selected on the blob training split). On C the
+    weight is selected per noise level and sensor count on the mixed160 training split, with the
+    grid and criterion of scripts/tikhonov_evaluation.py, so that Tikhonov is tuned on the same
+    distribution the mixed networks are trained on.
+  * Uncertainty: 95 % bootstrap intervals over test images for the mean over the 5 networks;
+    differences are paired image by image.
+
+The main question is whether mixed training keeps a meaningful advantage over Tikhonov on C, in
+particular on the unseen family, and what it costs on A.
+
+Networks (best epoch, validation loss): mixed40_seed0 189 0.000186, mixed160_seed0 49 0.000236, mixed40_seed1 193 0.000186, mixed160_seed1 49 0.000234, mixed40_seed2 189 0.000174, mixed160_seed2 49 0.000236, mixed40_seed3 197 0.000175, mixed160_seed3 49 0.000232, mixed40_seed4 172 0.000182, mixed160_seed4 47 0.000241
+Tikhonov mu selected on the mixed160 training split: noiseless|16 1e-11, noiseless|64 1e-07, low|16 1e-04, low|64 1e-03, moderate|16 1e-03, moderate|64 1e-02, high|16 1e-02, high|64 1e-02, severe|16 1e-02, severe|64 1e-01
+Tikhonov mu published (blob training split):       noiseless|16 1e-10, noiseless|64 1e-07, low|16 1e-03, low|64 1e-03, moderate|16 1e-03, moderate|64 1e-02, high|16 1e-02, high|64 1e-02, severe|16 1e-02, severe|64 1e-01
+
+== C. New shape test set (50 images per row). Mean [95 % CI]; 'vs Tik' is the paired difference to Tikhonov.
+-- PSNR
+  blobs, noise noiseless, 16 sensors: Tikhonov 44.43
+      blob-trained      53.59 (networks 52.31-54.80) | vs Tik +9.16 [+8.14, +10.16]
+      mixed40-trained   45.79 (networks 45.06-46.33) | vs Tik +1.36 [+0.60, +2.07] | vs blob-trained -7.80 [-8.30, -7.33]
+      mixed160-trained  45.72 (networks 44.44-46.20) | vs Tik +1.29 [+0.53, +2.00] | vs blob-trained -7.87 [-8.40, -7.39]
+  blobs, noise noiseless, 64 sensors: Tikhonov 91.05
+      blob-trained      62.31 (networks 61.10-64.10) | vs Tik -28.74 [-29.25, -28.28]
+      mixed40-trained   51.83 (networks 50.76-52.98) | vs Tik -39.22 [-40.07, -38.48] | vs blob-trained -10.47 [-10.91, -10.07]
+      mixed160-trained  52.03 (networks 50.44-52.78) | vs Tik -39.02 [-39.96, -38.21] | vs blob-trained -10.28 [-10.76, -9.84]
+  discs, noise noiseless, 16 sensors: Tikhonov 25.93
+      blob-trained      25.32 (networks 25.23-25.49) | vs Tik -0.61 [-0.66, -0.55]
+      mixed40-trained   40.74 (networks 39.88-41.23) | vs Tik +14.81 [+13.87, +15.70] | vs blob-trained +15.42 [+14.47, +16.31]
+      mixed160-trained  41.84 (networks 41.00-42.46) | vs Tik +15.91 [+14.98, +16.72] | vs blob-trained +16.52 [+15.57, +17.32]
+  discs, noise noiseless, 64 sensors: Tikhonov 36.67
+      blob-trained      26.75 (networks 26.59-27.06) | vs Tik -9.92 [-10.12, -9.74]
+      mixed40-trained   45.17 (networks 44.59-45.60) | vs Tik +8.50 [+7.56, +9.35] | vs blob-trained +18.42 [+17.54, +19.24]
+      mixed160-trained  46.01 (networks 45.63-46.47) | vs Tik +9.33 [+8.44, +10.19] | vs blob-trained +19.25 [+18.40, +20.04]
+  ellipses, noise noiseless, 16 sensors: Tikhonov 26.22
+      blob-trained      25.80 (networks 25.71-25.98) | vs Tik -0.42 [-0.50, -0.33]
+      mixed40-trained   41.15 (networks 40.37-41.81) | vs Tik +14.93 [+13.96, +15.86] | vs blob-trained +15.35 [+14.38, +16.27]
+      mixed160-trained  42.40 (networks 41.42-43.15) | vs Tik +16.18 [+15.23, +17.05] | vs blob-trained +16.60 [+15.66, +17.46]
+  ellipses, noise noiseless, 64 sensors: Tikhonov 37.26
+      blob-trained      27.11 (networks 26.96-27.41) | vs Tik -10.15 [-10.43, -9.92]
+      mixed40-trained   46.19 (networks 45.60-47.00) | vs Tik +8.92 [+8.04, +9.78] | vs blob-trained +19.08 [+18.17, +19.93]
+      mixed160-trained  47.27 (networks 46.72-47.75) | vs Tik +10.00 [+9.12, +10.79] | vs blob-trained +20.16 [+19.28, +20.97]
+  rectangles, noise noiseless, 16 sensors: Tikhonov 26.10
+      blob-trained      25.61 (networks 25.54-25.78) | vs Tik -0.49 [-0.57, -0.42]
+      mixed40-trained   36.56 (networks 36.19-37.01) | vs Tik +10.46 [+9.51, +11.46] | vs blob-trained +10.95 [+9.99, +11.99]
+      mixed160-trained  38.66 (networks 37.50-39.33) | vs Tik +12.55 [+11.54, +13.64] | vs blob-trained +13.05 [+12.02, +14.13]
+  rectangles, noise noiseless, 64 sensors: Tikhonov 36.71
+      blob-trained      26.54 (networks 26.40-26.81) | vs Tik -10.17 [-10.45, -9.89]
+      mixed40-trained   43.15 (networks 42.46-43.84) | vs Tik +6.44 [+5.55, +7.36] | vs blob-trained +16.61 [+15.69, +17.46]
+      mixed160-trained  45.03 (networks 44.57-45.76) | vs Tik +8.32 [+7.39, +9.26] | vs blob-trained +18.49 [+17.58, +19.41]
+  vessels (unseen by every network), noise noiseless, 16 sensors: Tikhonov 31.92
+      blob-trained      35.33 (networks 35.01-35.72) | vs Tik +3.42 [+2.96, +3.91]
+      mixed40-trained   31.45 (networks 31.13-31.76) | vs Tik -0.46 [-0.75, -0.18] | vs blob-trained -3.88 [-4.54, -3.30]
+      mixed160-trained  31.31 (networks 30.95-31.99) | vs Tik -0.61 [-0.90, -0.31] | vs blob-trained -4.02 [-4.66, -3.45]
+  vessels (unseen by every network), noise noiseless, 64 sensors: Tikhonov 66.60
+      blob-trained      42.30 (networks 41.88-42.87) | vs Tik -24.30 [-25.54, -23.07]
+      mixed40-trained   33.57 (networks 33.16-33.96) | vs Tik -33.03 [-34.91, -31.13] | vs blob-trained -8.73 [-9.65, -7.83]
+      mixed160-trained  33.44 (networks 33.07-34.05) | vs Tik -33.16 [-35.04, -31.27] | vs blob-trained -8.86 [-9.78, -7.96]
+  blobs, noise low, 16 sensors: Tikhonov 39.97
+      blob-trained      53.50 (networks 52.24-54.65) | vs Tik +13.52 [+13.03, +14.01]
+      mixed40-trained   45.78 (networks 45.05-46.31) | vs Tik +5.81 [+5.35, +6.23] | vs blob-trained -7.72 [-8.22, -7.25]
+      mixed160-trained  45.70 (networks 44.43-46.18) | vs Tik +5.73 [+5.26, +6.18] | vs blob-trained -7.79 [-8.33, -7.30]
+  blobs, noise low, 64 sensors: Tikhonov 52.35
+      blob-trained      61.90 (networks 60.78-63.50) | vs Tik +9.55 [+9.07, +9.96]
+      mixed40-trained   51.77 (networks 50.71-52.90) | vs Tik -0.58 [-1.43, +0.15] | vs blob-trained -10.13 [-10.58, -9.72]
+      mixed160-trained  51.96 (networks 50.40-52.69) | vs Tik -0.39 [-1.31, +0.40] | vs blob-trained -9.94 [-10.44, -9.49]
+  discs, noise low, 16 sensors: Tikhonov 24.91
+      blob-trained      25.32 (networks 25.23-25.49) | vs Tik +0.41 [+0.37, +0.46]
+      mixed40-trained   40.71 (networks 39.85-41.18) | vs Tik +15.80 [+14.86, +16.68] | vs blob-trained +15.39 [+14.44, +16.27]
+      mixed160-trained  41.80 (networks 40.96-42.43) | vs Tik +16.89 [+15.95, +17.71] | vs blob-trained +16.48 [+15.54, +17.29]
+  discs, noise low, 64 sensors: Tikhonov 29.88
+      blob-trained      26.75 (networks 26.59-27.06) | vs Tik -3.13 [-3.17, -3.09]
+      mixed40-trained   45.14 (networks 44.55-45.57) | vs Tik +15.26 [+14.39, +16.09] | vs blob-trained +18.38 [+17.51, +19.20]
+      mixed160-trained  45.97 (networks 45.59-46.43) | vs Tik +16.09 [+15.25, +16.89] | vs blob-trained +19.22 [+18.37, +20.00]
+  ellipses, noise low, 16 sensors: Tikhonov 25.24
+      blob-trained      25.80 (networks 25.71-25.98) | vs Tik +0.56 [+0.48, +0.64]
+      mixed40-trained   41.11 (networks 40.34-41.77) | vs Tik +15.87 [+14.90, +16.80] | vs blob-trained +15.31 [+14.34, +16.23]
+      mixed160-trained  42.37 (networks 41.38-43.11) | vs Tik +17.13 [+16.19, +18.01] | vs blob-trained +16.57 [+15.62, +17.42]
+  ellipses, noise low, 64 sensors: Tikhonov 30.20
+      blob-trained      27.11 (networks 26.96-27.41) | vs Tik -3.09 [-3.14, -3.04]
+      mixed40-trained   46.16 (networks 45.57-46.96) | vs Tik +15.96 [+15.04, +16.82] | vs blob-trained +19.05 [+18.14, +19.90]
+      mixed160-trained  47.23 (networks 46.69-47.70) | vs Tik +17.03 [+16.13, +17.84] | vs blob-trained +20.12 [+19.24, +20.92]
+  rectangles, noise low, 16 sensors: Tikhonov 25.13
+      blob-trained      25.61 (networks 25.54-25.78) | vs Tik +0.48 [+0.42, +0.54]
+      mixed40-trained   36.55 (networks 36.17-36.99) | vs Tik +11.41 [+10.47, +12.41] | vs blob-trained +10.94 [+9.98, +11.97]
+      mixed160-trained  38.63 (networks 37.46-39.29) | vs Tik +13.50 [+12.47, +14.58] | vs blob-trained +13.02 [+11.99, +14.11]
+  rectangles, noise low, 64 sensors: Tikhonov 29.67
+      blob-trained      26.54 (networks 26.40-26.81) | vs Tik -3.13 [-3.23, -3.03]
+      mixed40-trained   43.13 (networks 42.45-43.82) | vs Tik +13.46 [+12.55, +14.34] | vs blob-trained +16.59 [+15.67, +17.44]
+      mixed160-trained  45.01 (networks 44.55-45.73) | vs Tik +15.33 [+14.40, +16.27] | vs blob-trained +18.47 [+17.56, +19.38]
+  vessels (unseen by every network), noise low, 16 sensors: Tikhonov 30.97
+      blob-trained      35.33 (networks 35.01-35.72) | vs Tik +4.36 [+3.85, +4.88]
+      mixed40-trained   31.45 (networks 31.13-31.76) | vs Tik +0.48 [+0.23, +0.73] | vs blob-trained -3.88 [-4.53, -3.30]
+      mixed160-trained  31.31 (networks 30.95-31.99) | vs Tik +0.33 [+0.07, +0.60] | vs blob-trained -4.02 [-4.66, -3.45]
+  vessels (unseen by every network), noise low, 64 sensors: Tikhonov 49.47
+      blob-trained      42.29 (networks 41.87-42.86) | vs Tik -7.18 [-8.03, -6.26]
+      mixed40-trained   33.57 (networks 33.16-33.96) | vs Tik -15.90 [-16.60, -15.19] | vs blob-trained -8.72 [-9.64, -7.82]
+      mixed160-trained  33.43 (networks 33.06-34.05) | vs Tik -16.03 [-16.73, -15.32] | vs blob-trained -8.85 [-9.77, -7.96]
+  blobs, noise moderate, 16 sensors: Tikhonov 36.84
+      blob-trained      51.79 (networks 50.99-52.41) | vs Tik +14.95 [+14.58, +15.30]
+      mixed40-trained   45.26 (networks 44.62-45.69) | vs Tik +8.42 [+7.90, +8.91] | vs blob-trained -6.52 [-7.08, -6.03]
+      mixed160-trained  45.18 (networks 44.04-45.59) | vs Tik +8.34 [+7.79, +8.86] | vs blob-trained -6.60 [-7.19, -6.09]
+  blobs, noise moderate, 64 sensors: Tikhonov 44.66
+      blob-trained      57.10 (networks 56.55-57.52) | vs Tik +12.44 [+12.24, +12.62]
+      mixed40-trained   50.57 (networks 49.70-51.34) | vs Tik +5.92 [+5.22, +6.53] | vs blob-trained -6.53 [-7.05, -6.06]
+      mixed160-trained  50.76 (networks 49.55-51.26) | vs Tik +6.10 [+5.34, +6.76] | vs blob-trained -6.34 [-6.92, -5.83]
+  discs, noise moderate, 16 sensors: Tikhonov 24.43
+      blob-trained      25.32 (networks 25.22-25.48) | vs Tik +0.88 [+0.84, +0.93]
+      mixed40-trained   40.16 (networks 39.40-40.54) | vs Tik +15.73 [+14.84, +16.60] | vs blob-trained +14.85 [+13.94, +15.71]
+      mixed160-trained  41.23 (networks 40.41-41.73) | vs Tik +16.80 [+15.93, +17.55] | vs blob-trained +15.92 [+15.05, +16.68]
+  discs, noise moderate, 64 sensors: Tikhonov 28.01
+      blob-trained      26.75 (networks 26.58-27.05) | vs Tik -1.27 [-1.30, -1.24]
+      mixed40-trained   44.41 (networks 43.94-44.84) | vs Tik +16.40 [+15.62, +17.12] | vs blob-trained +17.67 [+16.89, +18.39]
+      mixed160-trained  45.18 (networks 44.89-45.52) | vs Tik +17.16 [+16.42, +17.86] | vs blob-trained +18.43 [+17.68, +19.13]
+  ellipses, noise moderate, 16 sensors: Tikhonov 24.79
+      blob-trained      25.79 (networks 25.71-25.98) | vs Tik +1.00 [+0.93, +1.08]
+      mixed40-trained   40.85 (networks 40.12-41.46) | vs Tik +16.06 [+15.12, +16.95] | vs blob-trained +15.05 [+14.12, +15.92]
+      mixed160-trained  42.05 (networks 41.18-42.71) | vs Tik +17.26 [+16.36, +18.10] | vs blob-trained +16.26 [+15.37, +17.07]
+  ellipses, noise moderate, 64 sensors: Tikhonov 28.38
+      blob-trained      27.10 (networks 26.95-27.40) | vs Tik -1.27 [-1.31, -1.24]
+      mixed40-trained   45.51 (networks 44.97-46.11) | vs Tik +17.13 [+16.31, +17.90] | vs blob-trained +18.40 [+17.58, +19.18]
+      mixed160-trained  46.50 (networks 46.07-46.88) | vs Tik +18.12 [+17.31, +18.84] | vs blob-trained +19.40 [+18.59, +20.12]
+  rectangles, noise moderate, 16 sensors: Tikhonov 24.71
+      blob-trained      25.60 (networks 25.53-25.77) | vs Tik +0.89 [+0.83, +0.96]
+      mixed40-trained   36.35 (networks 35.98-36.73) | vs Tik +11.64 [+10.73, +12.62] | vs blob-trained +10.75 [+9.82, +11.75]
+      mixed160-trained  38.32 (networks 37.20-38.94) | vs Tik +13.60 [+12.62, +14.67] | vs blob-trained +12.71 [+11.73, +13.77]
+  rectangles, noise moderate, 64 sensors: Tikhonov 27.87
+      blob-trained      26.53 (networks 26.40-26.81) | vs Tik -1.34 [-1.39, -1.29]
+      mixed40-trained   42.71 (networks 42.11-43.36) | vs Tik +14.84 [+13.97, +15.65] | vs blob-trained +16.18 [+15.31, +17.00]
+      mixed160-trained  44.47 (networks 44.01-45.09) | vs Tik +16.59 [+15.73, +17.44] | vs blob-trained +17.93 [+17.08, +18.77]
+  vessels (unseen by every network), noise moderate, 16 sensors: Tikhonov 30.15
+      blob-trained      35.31 (networks 34.98-35.69) | vs Tik +5.16 [+4.61, +5.72]
+      mixed40-trained   31.45 (networks 31.12-31.76) | vs Tik +1.30 [+1.05, +1.55] | vs blob-trained -3.86 [-4.50, -3.29]
+      mixed160-trained  31.30 (networks 30.95-31.98) | vs Tik +1.16 [+0.90, +1.42] | vs blob-trained -4.00 [-4.63, -3.43]
+  vessels (unseen by every network), noise moderate, 64 sensors: Tikhonov 42.00
+      blob-trained      42.09 (networks 41.70-42.62) | vs Tik +0.09 [-0.74, +0.95]
+      mixed40-trained   33.53 (networks 33.13-33.92) | vs Tik -8.47 [-9.01, -7.93] | vs blob-trained -8.56 [-9.41, -7.70]
+      mixed160-trained  33.40 (networks 33.04-34.01) | vs Tik -8.60 [-9.12, -8.07] | vs blob-trained -8.69 [-9.55, -7.82]
+  blobs, noise high, 16 sensors: Tikhonov 33.54
+      blob-trained      44.50 (networks 44.37-44.66) | vs Tik +10.97 [+10.65, +11.29]
+      mixed40-trained   41.16 (networks 40.98-41.39) | vs Tik +7.62 [+7.32, +7.89] | vs blob-trained -3.35 [-3.81, -2.92]
+      mixed160-trained  41.09 (networks 40.62-41.39) | vs Tik +7.55 [+7.24, +7.86] | vs blob-trained -3.41 [-3.90, -2.97]
+  blobs, noise high, 64 sensors: Tikhonov 36.85
+      blob-trained      46.92 (networks 46.70-47.10) | vs Tik +10.07 [+10.00, +10.14]
+      mixed40-trained   44.20 (networks 43.68-44.56) | vs Tik +7.35 [+7.09, +7.56] | vs blob-trained -2.73 [-2.96, -2.52]
+      mixed160-trained  44.36 (networks 44.08-44.61) | vs Tik +7.51 [+7.22, +7.75] | vs blob-trained -2.57 [-2.84, -2.34]
+  discs, noise high, 16 sensors: Tikhonov 23.55
+      blob-trained      25.21 (networks 25.12-25.37) | vs Tik +1.65 [+1.61, +1.70]
+      mixed40-trained   36.22 (networks 35.96-36.44) | vs Tik +12.67 [+12.08, +13.28] | vs blob-trained +11.01 [+10.41, +11.62]
+      mixed160-trained  36.69 (networks 36.32-36.90) | vs Tik +13.14 [+12.58, +13.71] | vs blob-trained +11.49 [+10.93, +12.05]
+  discs, noise high, 64 sensors: Tikhonov 26.85
+      blob-trained      26.64 (networks 26.49-26.93) | vs Tik -0.21 [-0.28, -0.14]
+      mixed40-trained   39.36 (networks 39.00-39.76) | vs Tik +12.51 [+12.15, +12.88] | vs blob-trained +12.72 [+12.33, +13.12]
+      mixed160-trained  39.85 (networks 39.60-40.03) | vs Tik +13.00 [+12.64, +13.36] | vs blob-trained +13.21 [+12.81, +13.62]
+  ellipses, noise high, 16 sensors: Tikhonov 23.99
+      blob-trained      25.71 (networks 25.62-25.89) | vs Tik +1.71 [+1.65, +1.78]
+      mixed40-trained   37.29 (networks 37.06-37.59) | vs Tik +13.30 [+12.62, +13.98] | vs blob-trained +11.59 [+10.93, +12.24]
+      mixed160-trained  37.85 (networks 37.21-38.16) | vs Tik +13.86 [+13.17, +14.56] | vs blob-trained +12.15 [+11.50, +12.81]
+  ellipses, noise high, 64 sensors: Tikhonov 27.47
+      blob-trained      27.03 (networks 26.88-27.31) | vs Tik -0.44 [-0.50, -0.38]
+      mixed40-trained   40.82 (networks 40.43-41.26) | vs Tik +13.36 [+12.90, +13.78] | vs blob-trained +13.80 [+13.32, +14.24]
+      mixed160-trained  41.39 (networks 41.18-41.57) | vs Tik +13.92 [+13.45, +14.32] | vs blob-trained +14.36 [+13.87, +14.79]
+  rectangles, noise high, 16 sensors: Tikhonov 23.94
+      blob-trained      25.52 (networks 25.45-25.69) | vs Tik +1.58 [+1.53, +1.64]
+      mixed40-trained   34.52 (networks 34.31-34.76) | vs Tik +10.58 [+9.88, +11.34] | vs blob-trained +8.99 [+8.29, +9.77]
+      mixed160-trained  35.67 (networks 35.08-36.05) | vs Tik +11.73 [+11.02, +12.57] | vs blob-trained +10.15 [+9.44, +10.96]
+  rectangles, noise high, 64 sensors: Tikhonov 26.97
+      blob-trained      26.46 (networks 26.33-26.73) | vs Tik -0.50 [-0.58, -0.43]
+      mixed40-trained   39.05 (networks 38.81-39.56) | vs Tik +12.08 [+11.54, +12.61] | vs blob-trained +12.59 [+12.01, +13.16]
+      mixed160-trained  40.06 (networks 39.74-40.19) | vs Tik +13.09 [+12.56, +13.61] | vs blob-trained +13.60 [+13.03, +14.15]
+  vessels (unseen by every network), noise high, 16 sensors: Tikhonov 28.78
+      blob-trained      34.91 (networks 34.63-35.26) | vs Tik +6.13 [+5.60, +6.67]
+      mixed40-trained   31.21 (networks 30.90-31.50) | vs Tik +2.43 [+2.20, +2.66] | vs blob-trained -3.70 [-4.26, -3.17]
+      mixed160-trained  31.07 (networks 30.77-31.68) | vs Tik +2.29 [+2.05, +2.53] | vs blob-trained -3.85 [-4.41, -3.32]
+  vessels (unseen by every network), noise high, 64 sensors: Tikhonov 36.15
+      blob-trained      40.39 (networks 40.14-40.73) | vs Tik +4.24 [+3.37, +5.11]
+      mixed40-trained   33.07 (networks 32.67-33.40) | vs Tik -3.08 [-3.69, -2.44] | vs blob-trained -7.32 [-7.92, -6.66]
+      mixed160-trained  32.93 (networks 32.65-33.50) | vs Tik -3.22 [-3.81, -2.59] | vs blob-trained -7.46 [-8.06, -6.79]
+  blobs, noise severe, 16 sensors: Tikhonov 28.12
+      blob-trained      37.28 (networks 37.01-37.49) | vs Tik +9.15 [+9.01, +9.31]
+      mixed40-trained   34.91 (networks 34.63-35.10) | vs Tik +6.78 [+6.59, +6.98] | vs blob-trained -2.37 [-2.60, -2.16]
+      mixed160-trained  34.78 (networks 34.67-34.95) | vs Tik +6.66 [+6.44, +6.87] | vs blob-trained -2.49 [-2.74, -2.25]
+  blobs, noise severe, 64 sensors: Tikhonov 31.01
+      blob-trained      39.40 (networks 39.20-39.57) | vs Tik +8.39 [+8.27, +8.50]
+      mixed40-trained   37.07 (networks 36.62-37.60) | vs Tik +6.05 [+5.92, +6.19] | vs blob-trained -2.33 [-2.45, -2.22]
+      mixed160-trained  37.21 (networks 37.06-37.43) | vs Tik +6.20 [+6.05, +6.34] | vs blob-trained -2.19 [-2.33, -2.06]
+  discs, noise severe, 16 sensors: Tikhonov 21.56
+      blob-trained      24.63 (networks 24.52-24.77) | vs Tik +3.07 [+2.98, +3.17]
+      mixed40-trained   29.27 (networks 28.99-29.44) | vs Tik +7.71 [+7.33, +8.12] | vs blob-trained +4.64 [+4.23, +5.08]
+      mixed160-trained  29.13 (networks 28.97-29.34) | vs Tik +7.57 [+7.19, +7.97] | vs blob-trained +4.49 [+4.08, +4.93]
+  discs, noise severe, 64 sensors: Tikhonov 23.30
+      blob-trained      26.10 (networks 26.00-26.31) | vs Tik +2.80 [+2.73, +2.88]
+      mixed40-trained   32.37 (networks 32.01-32.82) | vs Tik +9.07 [+8.81, +9.34] | vs blob-trained +6.27 [+5.96, +6.58]
+      mixed160-trained  32.57 (networks 32.39-32.72) | vs Tik +9.27 [+8.97, +9.56] | vs blob-trained +6.47 [+6.12, +6.81]
+  ellipses, noise severe, 16 sensors: Tikhonov 22.35
+      blob-trained      25.28 (networks 25.18-25.44) | vs Tik +2.93 [+2.87, +2.99]
+      mixed40-trained   31.24 (networks 31.00-31.36) | vs Tik +8.89 [+8.40, +9.43] | vs blob-trained +5.96 [+5.46, +6.51]
+      mixed160-trained  31.33 (networks 31.16-31.50) | vs Tik +8.98 [+8.45, +9.53] | vs blob-trained +6.05 [+5.53, +6.63]
+  ellipses, noise severe, 64 sensors: Tikhonov 24.04
+      blob-trained      26.61 (networks 26.50-26.83) | vs Tik +2.56 [+2.48, +2.64]
+      mixed40-trained   34.21 (networks 33.79-34.68) | vs Tik +10.17 [+9.89, +10.43] | vs blob-trained +7.60 [+7.30, +7.91]
+      mixed160-trained  34.53 (networks 34.27-34.69) | vs Tik +10.48 [+10.18, +10.75] | vs blob-trained +7.92 [+7.60, +8.23]
+  rectangles, noise severe, 16 sensors: Tikhonov 22.28
+      blob-trained      25.10 (networks 25.01-25.25) | vs Tik +2.82 [+2.75, +2.89]
+      mixed40-trained   29.88 (networks 29.74-30.00) | vs Tik +7.60 [+7.12, +8.11] | vs blob-trained +4.78 [+4.29, +5.29]
+      mixed160-trained  30.12 (networks 30.03-30.18) | vs Tik +7.84 [+7.33, +8.38] | vs blob-trained +5.02 [+4.51, +5.56]
+  rectangles, noise severe, 64 sensors: Tikhonov 23.65
+      blob-trained      26.05 (networks 25.96-26.26) | vs Tik +2.40 [+2.32, +2.49]
+      mixed40-trained   32.96 (networks 32.69-33.43) | vs Tik +9.31 [+8.91, +9.72] | vs blob-trained +6.91 [+6.46, +7.34]
+      mixed160-trained  33.38 (networks 33.15-33.53) | vs Tik +9.73 [+9.30, +10.16] | vs blob-trained +7.33 [+6.86, +7.79]
+  vessels (unseen by every network), noise severe, 16 sensors: Tikhonov 26.33
+      blob-trained      33.22 (networks 33.04-33.43) | vs Tik +6.89 [+6.49, +7.28]
+      mixed40-trained   29.96 (networks 29.72-30.19) | vs Tik +3.63 [+3.46, +3.81] | vs blob-trained -3.26 [-3.63, -2.90]
+      mixed160-trained  29.84 (networks 29.65-30.24) | vs Tik +3.50 [+3.33, +3.69] | vs blob-trained -3.38 [-3.76, -3.01]
+  vessels (unseen by every network), noise severe, 64 sensors: Tikhonov 29.24
+      blob-trained      36.94 (networks 36.80-37.06) | vs Tik +7.70 [+7.33, +8.05]
+      mixed40-trained   31.36 (networks 31.03-31.53) | vs Tik +2.12 [+1.84, +2.39] | vs blob-trained -5.58 [-5.92, -5.24]
+      mixed160-trained  31.28 (networks 31.13-31.68) | vs Tik +2.05 [+1.76, +2.32] | vs blob-trained -5.66 [-6.01, -5.30]
+-- SSIM
+  blobs, noise noiseless, 16 sensors: Tikhonov 0.947
+      blob-trained      0.995 (networks 0.993-0.996) | vs Tik +0.048 [+0.038, +0.058]
+      mixed40-trained   0.985 (networks 0.980-0.989) | vs Tik +0.038 [+0.028, +0.048] | vs blob-trained -0.010 [-0.010, -0.009]
+      mixed160-trained  0.985 (networks 0.981-0.988) | vs Tik +0.038 [+0.028, +0.048] | vs blob-trained -0.010 [-0.011, -0.009]
+  blobs, noise noiseless, 64 sensors: Tikhonov 1.000
+      blob-trained      0.999 (networks 0.999-1.000) | vs Tik -0.001 [-0.001, -0.001]
+      mixed40-trained   0.996 (networks 0.994-0.998) | vs Tik -0.004 [-0.004, -0.004] | vs blob-trained -0.003 [-0.003, -0.003]
+      mixed160-trained  0.996 (networks 0.992-0.998) | vs Tik -0.004 [-0.004, -0.004] | vs blob-trained -0.003 [-0.004, -0.003]
+  discs, noise noiseless, 16 sensors: Tikhonov 0.496
+      blob-trained      0.794 (networks 0.782-0.803) | vs Tik +0.298 [+0.291, +0.304]
+      mixed40-trained   0.983 (networks 0.974-0.987) | vs Tik +0.487 [+0.477, +0.497] | vs blob-trained +0.189 [+0.181, +0.198]
+      mixed160-trained  0.984 (networks 0.980-0.990) | vs Tik +0.488 [+0.478, +0.498] | vs blob-trained +0.190 [+0.182, +0.199]
+  discs, noise noiseless, 64 sensors: Tikhonov 0.940
+      blob-trained      0.937 (networks 0.933-0.941) | vs Tik -0.003 [-0.006, -0.000]
+      mixed40-trained   0.995 (networks 0.990-0.997) | vs Tik +0.055 [+0.052, +0.058] | vs blob-trained +0.058 [+0.054, +0.062]
+      mixed160-trained  0.994 (networks 0.989-0.997) | vs Tik +0.055 [+0.052, +0.058] | vs blob-trained +0.058 [+0.054, +0.062]
+  ellipses, noise noiseless, 16 sensors: Tikhonov 0.496
+      blob-trained      0.814 (networks 0.804-0.825) | vs Tik +0.318 [+0.310, +0.326]
+      mixed40-trained   0.984 (networks 0.975-0.988) | vs Tik +0.488 [+0.474, +0.501] | vs blob-trained +0.170 [+0.159, +0.181]
+      mixed160-trained  0.985 (networks 0.981-0.991) | vs Tik +0.489 [+0.475, +0.502] | vs blob-trained +0.171 [+0.160, +0.182]
+  ellipses, noise noiseless, 64 sensors: Tikhonov 0.943
+      blob-trained      0.944 (networks 0.940-0.948) | vs Tik +0.000 [-0.002, +0.003]
+      mixed40-trained   0.995 (networks 0.990-0.997) | vs Tik +0.052 [+0.048, +0.055] | vs blob-trained +0.051 [+0.047, +0.055]
+      mixed160-trained  0.995 (networks 0.989-0.997) | vs Tik +0.052 [+0.048, +0.055] | vs blob-trained +0.051 [+0.047, +0.055]
+  rectangles, noise noiseless, 16 sensors: Tikhonov 0.497
+      blob-trained      0.811 (networks 0.801-0.823) | vs Tik +0.314 [+0.306, +0.322]
+      mixed40-trained   0.979 (networks 0.971-0.983) | vs Tik +0.482 [+0.468, +0.496] | vs blob-trained +0.168 [+0.158, +0.179]
+      mixed160-trained  0.982 (networks 0.978-0.988) | vs Tik +0.485 [+0.471, +0.499] | vs blob-trained +0.171 [+0.160, +0.182]
+  rectangles, noise noiseless, 64 sensors: Tikhonov 0.939
+      blob-trained      0.939 (networks 0.935-0.944) | vs Tik -0.000 [-0.004, +0.003]
+      mixed40-trained   0.994 (networks 0.989-0.996) | vs Tik +0.055 [+0.050, +0.059] | vs blob-trained +0.055 [+0.050, +0.060]
+      mixed160-trained  0.994 (networks 0.988-0.997) | vs Tik +0.055 [+0.050, +0.059] | vs blob-trained +0.055 [+0.050, +0.060]
+  vessels (unseen by every network), noise noiseless, 16 sensors: Tikhonov 0.692
+      blob-trained      0.920 (networks 0.913-0.927) | vs Tik +0.228 [+0.215, +0.242]
+      mixed40-trained   0.961 (networks 0.957-0.963) | vs Tik +0.269 [+0.249, +0.289] | vs blob-trained +0.040 [+0.032, +0.049]
+      mixed160-trained  0.962 (networks 0.955-0.969) | vs Tik +0.271 [+0.251, +0.291] | vs blob-trained +0.042 [+0.033, +0.051]
+  vessels (unseen by every network), noise noiseless, 64 sensors: Tikhonov 1.000
+      blob-trained      0.994 (networks 0.993-0.995) | vs Tik -0.006 [-0.007, -0.004]
+      mixed40-trained   0.986 (networks 0.984-0.988) | vs Tik -0.014 [-0.015, -0.012] | vs blob-trained -0.008 [-0.009, -0.007]
+      mixed160-trained  0.986 (networks 0.980-0.989) | vs Tik -0.014 [-0.015, -0.012] | vs blob-trained -0.008 [-0.009, -0.007]
+  blobs, noise low, 16 sensors: Tikhonov 0.885
+      blob-trained      0.995 (networks 0.993-0.996) | vs Tik +0.111 [+0.099, +0.122]
+      mixed40-trained   0.985 (networks 0.980-0.989) | vs Tik +0.101 [+0.089, +0.112] | vs blob-trained -0.010 [-0.010, -0.009]
+      mixed160-trained  0.985 (networks 0.980-0.988) | vs Tik +0.101 [+0.089, +0.112] | vs blob-trained -0.010 [-0.011, -0.009]
+  blobs, noise low, 64 sensors: Tikhonov 0.991
+      blob-trained      0.999 (networks 0.999-1.000) | vs Tik +0.008 [+0.007, +0.009]
+      mixed40-trained   0.996 (networks 0.993-0.998) | vs Tik +0.005 [+0.004, +0.006] | vs blob-trained -0.003 [-0.003, -0.003]
+      mixed160-trained  0.996 (networks 0.991-0.998) | vs Tik +0.005 [+0.004, +0.005] | vs blob-trained -0.003 [-0.004, -0.003]
+  discs, noise low, 16 sensors: Tikhonov 0.454
+      blob-trained      0.793 (networks 0.782-0.803) | vs Tik +0.339 [+0.333, +0.345]
+      mixed40-trained   0.982 (networks 0.973-0.986) | vs Tik +0.528 [+0.518, +0.538] | vs blob-trained +0.189 [+0.181, +0.198]
+      mixed160-trained  0.983 (networks 0.979-0.989) | vs Tik +0.529 [+0.519, +0.539] | vs blob-trained +0.190 [+0.181, +0.199]
+  discs, noise low, 64 sensors: Tikhonov 0.902
+      blob-trained      0.936 (networks 0.933-0.941) | vs Tik +0.035 [+0.032, +0.037]
+      mixed40-trained   0.994 (networks 0.989-0.996) | vs Tik +0.093 [+0.087, +0.098] | vs blob-trained +0.058 [+0.054, +0.062]
+      mixed160-trained  0.994 (networks 0.988-0.997) | vs Tik +0.092 [+0.087, +0.098] | vs blob-trained +0.058 [+0.054, +0.061]
+  ellipses, noise low, 16 sensors: Tikhonov 0.461
+      blob-trained      0.814 (networks 0.804-0.825) | vs Tik +0.353 [+0.344, +0.362]
+      mixed40-trained   0.984 (networks 0.975-0.988) | vs Tik +0.523 [+0.508, +0.536] | vs blob-trained +0.170 [+0.159, +0.181]
+      mixed160-trained  0.985 (networks 0.980-0.990) | vs Tik +0.524 [+0.509, +0.537] | vs blob-trained +0.171 [+0.160, +0.182]
+  ellipses, noise low, 64 sensors: Tikhonov 0.912
+      blob-trained      0.943 (networks 0.940-0.948) | vs Tik +0.031 [+0.028, +0.034]
+      mixed40-trained   0.995 (networks 0.990-0.997) | vs Tik +0.083 [+0.076, +0.088] | vs blob-trained +0.051 [+0.047, +0.055]
+      mixed160-trained  0.995 (networks 0.989-0.997) | vs Tik +0.082 [+0.076, +0.088] | vs blob-trained +0.051 [+0.047, +0.055]
+  rectangles, noise low, 16 sensors: Tikhonov 0.465
+      blob-trained      0.811 (networks 0.801-0.823) | vs Tik +0.346 [+0.337, +0.355]
+      mixed40-trained   0.979 (networks 0.971-0.983) | vs Tik +0.514 [+0.498, +0.529] | vs blob-trained +0.168 [+0.158, +0.179]
+      mixed160-trained  0.982 (networks 0.978-0.988) | vs Tik +0.517 [+0.501, +0.532] | vs blob-trained +0.171 [+0.160, +0.182]
+  rectangles, noise low, 64 sensors: Tikhonov 0.905
+      blob-trained      0.939 (networks 0.935-0.944) | vs Tik +0.034 [+0.030, +0.038]
+      mixed40-trained   0.994 (networks 0.989-0.996) | vs Tik +0.089 [+0.082, +0.097] | vs blob-trained +0.055 [+0.050, +0.060]
+      mixed160-trained  0.994 (networks 0.988-0.997) | vs Tik +0.089 [+0.082, +0.097] | vs blob-trained +0.055 [+0.050, +0.060]
+  vessels (unseen by every network), noise low, 16 sensors: Tikhonov 0.631
+      blob-trained      0.920 (networks 0.913-0.927) | vs Tik +0.289 [+0.274, +0.304]
+      mixed40-trained   0.960 (networks 0.957-0.963) | vs Tik +0.330 [+0.310, +0.349] | vs blob-trained +0.040 [+0.032, +0.049]
+      mixed160-trained  0.962 (networks 0.955-0.969) | vs Tik +0.332 [+0.311, +0.352] | vs blob-trained +0.042 [+0.033, +0.051]
+  vessels (unseen by every network), noise low, 64 sensors: Tikhonov 0.990
+      blob-trained      0.994 (networks 0.993-0.995) | vs Tik +0.004 [+0.003, +0.005]
+      mixed40-trained   0.986 (networks 0.983-0.988) | vs Tik -0.004 [-0.005, -0.003] | vs blob-trained -0.008 [-0.009, -0.007]
+      mixed160-trained  0.986 (networks 0.980-0.989) | vs Tik -0.004 [-0.005, -0.003] | vs blob-trained -0.008 [-0.009, -0.007]
+  blobs, noise moderate, 16 sensors: Tikhonov 0.786
+      blob-trained      0.992 (networks 0.990-0.993) | vs Tik +0.206 [+0.194, +0.219]
+      mixed40-trained   0.982 (networks 0.977-0.985) | vs Tik +0.196 [+0.184, +0.209] | vs blob-trained -0.010 [-0.010, -0.009]
+      mixed160-trained  0.982 (networks 0.977-0.985) | vs Tik +0.196 [+0.184, +0.209] | vs blob-trained -0.010 [-0.010, -0.009]
+  blobs, noise moderate, 64 sensors: Tikhonov 0.950
+      blob-trained      0.997 (networks 0.997-0.997) | vs Tik +0.048 [+0.042, +0.053]
+      mixed40-trained   0.994 (networks 0.991-0.996) | vs Tik +0.044 [+0.038, +0.049] | vs blob-trained -0.004 [-0.004, -0.003]
+      mixed160-trained  0.994 (networks 0.989-0.996) | vs Tik +0.044 [+0.038, +0.050] | vs blob-trained -0.003 [-0.004, -0.003]
+  discs, noise moderate, 16 sensors: Tikhonov 0.392
+      blob-trained      0.787 (networks 0.776-0.797) | vs Tik +0.396 [+0.389, +0.402]
+      mixed40-trained   0.973 (networks 0.965-0.977) | vs Tik +0.582 [+0.572, +0.591] | vs blob-trained +0.186 [+0.178, +0.194]
+      mixed160-trained  0.975 (networks 0.971-0.980) | vs Tik +0.583 [+0.574, +0.592] | vs blob-trained +0.187 [+0.179, +0.196]
+  discs, noise moderate, 64 sensors: Tikhonov 0.835
+      blob-trained      0.931 (networks 0.928-0.936) | vs Tik +0.096 [+0.089, +0.103]
+      mixed40-trained   0.988 (networks 0.982-0.990) | vs Tik +0.153 [+0.142, +0.163] | vs blob-trained +0.056 [+0.053, +0.060]
+      mixed160-trained  0.988 (networks 0.982-0.990) | vs Tik +0.153 [+0.142, +0.163] | vs blob-trained +0.056 [+0.053, +0.060]
+  ellipses, noise moderate, 16 sensors: Tikhonov 0.406
+      blob-trained      0.810 (networks 0.800-0.820) | vs Tik +0.403 [+0.395, +0.412]
+      mixed40-trained   0.977 (networks 0.969-0.980) | vs Tik +0.571 [+0.557, +0.584] | vs blob-trained +0.167 [+0.157, +0.178]
+      mixed160-trained  0.978 (networks 0.974-0.984) | vs Tik +0.572 [+0.558, +0.585] | vs blob-trained +0.169 [+0.158, +0.179]
+  ellipses, noise moderate, 64 sensors: Tikhonov 0.867
+      blob-trained      0.940 (networks 0.937-0.944) | vs Tik +0.073 [+0.067, +0.080]
+      mixed40-trained   0.990 (networks 0.985-0.992) | vs Tik +0.123 [+0.113, +0.133] | vs blob-trained +0.050 [+0.046, +0.054]
+      mixed160-trained  0.990 (networks 0.984-0.993) | vs Tik +0.124 [+0.113, +0.134] | vs blob-trained +0.050 [+0.046, +0.054]
+  rectangles, noise moderate, 16 sensors: Tikhonov 0.411
+      blob-trained      0.807 (networks 0.796-0.818) | vs Tik +0.396 [+0.388, +0.404]
+      mixed40-trained   0.972 (networks 0.964-0.976) | vs Tik +0.561 [+0.547, +0.576] | vs blob-trained +0.165 [+0.155, +0.176]
+      mixed160-trained  0.975 (networks 0.971-0.981) | vs Tik +0.564 [+0.549, +0.579] | vs blob-trained +0.168 [+0.158, +0.179]
+  rectangles, noise moderate, 64 sensors: Tikhonov 0.853
+      blob-trained      0.935 (networks 0.931-0.939) | vs Tik +0.082 [+0.073, +0.090]
+      mixed40-trained   0.988 (networks 0.983-0.991) | vs Tik +0.135 [+0.123, +0.148] | vs blob-trained +0.054 [+0.049, +0.059]
+      mixed160-trained  0.989 (networks 0.983-0.991) | vs Tik +0.136 [+0.123, +0.148] | vs blob-trained +0.054 [+0.049, +0.059]
+  vessels (unseen by every network), noise moderate, 16 sensors: Tikhonov 0.565
+      blob-trained      0.918 (networks 0.911-0.925) | vs Tik +0.353 [+0.338, +0.369]
+      mixed40-trained   0.957 (networks 0.954-0.959) | vs Tik +0.393 [+0.373, +0.412] | vs blob-trained +0.039 [+0.031, +0.048]
+      mixed160-trained  0.959 (networks 0.952-0.966) | vs Tik +0.395 [+0.375, +0.414] | vs blob-trained +0.041 [+0.033, +0.050]
+  vessels (unseen by every network), noise moderate, 64 sensors: Tikhonov 0.951
+      blob-trained      0.992 (networks 0.991-0.993) | vs Tik +0.041 [+0.036, +0.046]
+      mixed40-trained   0.984 (networks 0.981-0.985) | vs Tik +0.033 [+0.028, +0.038] | vs blob-trained -0.008 [-0.009, -0.007]
+      mixed160-trained  0.984 (networks 0.977-0.987) | vs Tik +0.033 [+0.028, +0.038] | vs blob-trained -0.008 [-0.009, -0.007]
+  blobs, noise high, 16 sensors: Tikhonov 0.638
+      blob-trained      0.943 (networks 0.941-0.946) | vs Tik +0.305 [+0.293, +0.318]
+      mixed40-trained   0.933 (networks 0.930-0.935) | vs Tik +0.295 [+0.284, +0.308] | vs blob-trained -0.010 [-0.011, -0.009]
+      mixed160-trained  0.935 (networks 0.930-0.939) | vs Tik +0.297 [+0.285, +0.309] | vs blob-trained -0.008 [-0.009, -0.007]
+  blobs, noise high, 64 sensors: Tikhonov 0.794
+      blob-trained      0.968 (networks 0.967-0.969) | vs Tik +0.174 [+0.160, +0.187]
+      mixed40-trained   0.959 (networks 0.953-0.963) | vs Tik +0.165 [+0.151, +0.177] | vs blob-trained -0.009 [-0.010, -0.008]
+      mixed160-trained  0.961 (networks 0.957-0.965) | vs Tik +0.167 [+0.153, +0.180] | vs blob-trained -0.007 [-0.007, -0.006]
+  discs, noise high, 16 sensors: Tikhonov 0.321
+      blob-trained      0.719 (networks 0.709-0.727) | vs Tik +0.398 [+0.391, +0.406]
+      mixed40-trained   0.864 (networks 0.860-0.868) | vs Tik +0.543 [+0.536, +0.550] | vs blob-trained +0.144 [+0.138, +0.150]
+      mixed160-trained  0.867 (networks 0.861-0.871) | vs Tik +0.546 [+0.539, +0.554] | vs blob-trained +0.148 [+0.142, +0.154]
+  discs, noise high, 64 sensors: Tikhonov 0.569
+      blob-trained      0.866 (networks 0.863-0.868) | vs Tik +0.297 [+0.284, +0.308]
+      mixed40-trained   0.899 (networks 0.888-0.909) | vs Tik +0.330 [+0.317, +0.341] | vs blob-trained +0.033 [+0.031, +0.036]
+      mixed160-trained  0.904 (networks 0.900-0.910) | vs Tik +0.335 [+0.322, +0.347] | vs blob-trained +0.038 [+0.036, +0.041]
+  ellipses, noise high, 16 sensors: Tikhonov 0.347
+      blob-trained      0.755 (networks 0.746-0.764) | vs Tik +0.408 [+0.399, +0.416]
+      mixed40-trained   0.892 (networks 0.888-0.895) | vs Tik +0.545 [+0.535, +0.554] | vs blob-trained +0.137 [+0.129, +0.145]
+      mixed160-trained  0.895 (networks 0.889-0.899) | vs Tik +0.548 [+0.538, +0.558] | vs blob-trained +0.140 [+0.132, +0.148]
+  ellipses, noise high, 64 sensors: Tikhonov 0.639
+      blob-trained      0.890 (networks 0.887-0.893) | vs Tik +0.251 [+0.238, +0.264]
+      mixed40-trained   0.924 (networks 0.914-0.931) | vs Tik +0.284 [+0.269, +0.298] | vs blob-trained +0.034 [+0.030, +0.037]
+      mixed160-trained  0.928 (networks 0.923-0.932) | vs Tik +0.288 [+0.273, +0.303] | vs blob-trained +0.038 [+0.034, +0.041]
+  rectangles, noise high, 16 sensors: Tikhonov 0.348
+      blob-trained      0.752 (networks 0.743-0.762) | vs Tik +0.404 [+0.397, +0.411]
+      mixed40-trained   0.885 (networks 0.881-0.888) | vs Tik +0.538 [+0.528, +0.547] | vs blob-trained +0.134 [+0.126, +0.141]
+      mixed160-trained  0.890 (networks 0.883-0.894) | vs Tik +0.542 [+0.532, +0.551] | vs blob-trained +0.138 [+0.131, +0.146]
+  rectangles, noise high, 64 sensors: Tikhonov 0.617
+      blob-trained      0.879 (networks 0.877-0.882) | vs Tik +0.263 [+0.247, +0.279]
+      mixed40-trained   0.914 (networks 0.903-0.922) | vs Tik +0.297 [+0.280, +0.314] | vs blob-trained +0.034 [+0.031, +0.037]
+      mixed160-trained  0.919 (networks 0.914-0.924) | vs Tik +0.302 [+0.285, +0.319] | vs blob-trained +0.039 [+0.036, +0.042]
+  vessels (unseen by every network), noise high, 16 sensors: Tikhonov 0.484
+      blob-trained      0.878 (networks 0.872-0.884) | vs Tik +0.395 [+0.382, +0.407]
+      mixed40-trained   0.910 (networks 0.908-0.912) | vs Tik +0.427 [+0.412, +0.442] | vs blob-trained +0.032 [+0.024, +0.040]
+      mixed160-trained  0.913 (networks 0.904-0.920) | vs Tik +0.430 [+0.415, +0.445] | vs blob-trained +0.035 [+0.027, +0.043]
+  vessels (unseen by every network), noise high, 64 sensors: Tikhonov 0.785
+      blob-trained      0.960 (networks 0.959-0.962) | vs Tik +0.175 [+0.159, +0.189]
+      mixed40-trained   0.946 (networks 0.940-0.951) | vs Tik +0.160 [+0.146, +0.174] | vs blob-trained -0.014 [-0.015, -0.013]
+      mixed160-trained  0.948 (networks 0.942-0.952) | vs Tik +0.163 [+0.148, +0.176] | vs blob-trained -0.012 [-0.013, -0.011]
+  blobs, noise severe, 16 sensors: Tikhonov 0.374
+      blob-trained      0.775 (networks 0.765-0.784) | vs Tik +0.401 [+0.393, +0.408]
+      mixed40-trained   0.759 (networks 0.752-0.765) | vs Tik +0.385 [+0.377, +0.392] | vs blob-trained -0.016 [-0.017, -0.015]
+      mixed160-trained  0.764 (networks 0.754-0.769) | vs Tik +0.390 [+0.382, +0.397] | vs blob-trained -0.011 [-0.012, -0.010]
+  blobs, noise severe, 64 sensors: Tikhonov 0.736
+      blob-trained      0.851 (networks 0.847-0.855) | vs Tik +0.116 [+0.105, +0.124]
+      mixed40-trained   0.819 (networks 0.804-0.835) | vs Tik +0.084 [+0.076, +0.090] | vs blob-trained -0.032 [-0.034, -0.030]
+      mixed160-trained  0.828 (networks 0.822-0.837) | vs Tik +0.093 [+0.084, +0.100] | vs blob-trained -0.023 [-0.024, -0.021]
+  discs, noise severe, 16 sensors: Tikhonov 0.194
+      blob-trained      0.511 (networks 0.498-0.521) | vs Tik +0.317 [+0.302, +0.332]
+      mixed40-trained   0.582 (networks 0.571-0.590) | vs Tik +0.388 [+0.374, +0.402] | vs blob-trained +0.071 [+0.067, +0.075]
+      mixed160-trained  0.587 (networks 0.576-0.592) | vs Tik +0.393 [+0.379, +0.408] | vs blob-trained +0.076 [+0.072, +0.080]
+  discs, noise severe, 64 sensors: Tikhonov 0.521
+      blob-trained      0.643 (networks 0.638-0.648) | vs Tik +0.121 [+0.116, +0.127]
+      mixed40-trained   0.633 (networks 0.609-0.659) | vs Tik +0.112 [+0.107, +0.117] | vs blob-trained -0.009 [-0.012, -0.007]
+      mixed160-trained  0.647 (networks 0.637-0.659) | vs Tik +0.125 [+0.120, +0.131] | vs blob-trained +0.004 [+0.002, +0.006]
+  ellipses, noise severe, 16 sensors: Tikhonov 0.216
+      blob-trained      0.569 (networks 0.558-0.577) | vs Tik +0.353 [+0.338, +0.368]
+      mixed40-trained   0.643 (networks 0.633-0.650) | vs Tik +0.427 [+0.413, +0.441] | vs blob-trained +0.074 [+0.070, +0.077]
+      mixed160-trained  0.649 (networks 0.639-0.653) | vs Tik +0.433 [+0.418, +0.447] | vs blob-trained +0.080 [+0.076, +0.083]
+  ellipses, noise severe, 64 sensors: Tikhonov 0.598
+      blob-trained      0.706 (networks 0.702-0.711) | vs Tik +0.108 [+0.103, +0.113]
+      mixed40-trained   0.698 (networks 0.676-0.721) | vs Tik +0.100 [+0.095, +0.105] | vs blob-trained -0.008 [-0.010, -0.006]
+      mixed160-trained  0.711 (networks 0.702-0.723) | vs Tik +0.113 [+0.107, +0.118] | vs blob-trained +0.004 [+0.002, +0.006]
+  rectangles, noise severe, 16 sensors: Tikhonov 0.210
+      blob-trained      0.563 (networks 0.551-0.572) | vs Tik +0.353 [+0.337, +0.369]
+      mixed40-trained   0.635 (networks 0.625-0.642) | vs Tik +0.424 [+0.410, +0.440] | vs blob-trained +0.072 [+0.068, +0.076]
+      mixed160-trained  0.641 (networks 0.632-0.646) | vs Tik +0.431 [+0.416, +0.446] | vs blob-trained +0.079 [+0.075, +0.082]
+  rectangles, noise severe, 64 sensors: Tikhonov 0.570
+      blob-trained      0.685 (networks 0.681-0.689) | vs Tik +0.115 [+0.108, +0.122]
+      mixed40-trained   0.677 (networks 0.654-0.701) | vs Tik +0.107 [+0.100, +0.115] | vs blob-trained -0.007 [-0.009, -0.005]
+      mixed160-trained  0.690 (networks 0.681-0.702) | vs Tik +0.120 [+0.113, +0.128] | vs blob-trained +0.006 [+0.004, +0.007]
+  vessels (unseen by every network), noise severe, 16 sensors: Tikhonov 0.316
+      blob-trained      0.734 (networks 0.726-0.742) | vs Tik +0.418 [+0.412, +0.425]
+      mixed40-trained   0.744 (networks 0.737-0.751) | vs Tik +0.428 [+0.421, +0.436] | vs blob-trained +0.010 [+0.005, +0.015]
+      mixed160-trained  0.750 (networks 0.737-0.757) | vs Tik +0.433 [+0.426, +0.441] | vs blob-trained +0.015 [+0.010, +0.020]
+  vessels (unseen by every network), noise severe, 64 sensors: Tikhonov 0.737
+      blob-trained      0.832 (networks 0.828-0.836) | vs Tik +0.095 [+0.087, +0.104]
+      mixed40-trained   0.793 (networks 0.777-0.810) | vs Tik +0.056 [+0.050, +0.063] | vs blob-trained -0.039 [-0.041, -0.036]
+      mixed160-trained  0.803 (networks 0.797-0.813) | vs Tik +0.065 [+0.059, +0.073] | vs blob-trained -0.030 [-0.032, -0.027]
+
+== A. Blob test set (200 images per row), unchanged. Tikhonov and blob-trained values are the published ones.
+-- PSNR
+  noise noiseless, 16 sensors: Tikhonov 43.56 | blob-trained 53.40
+      mixed40-trained 45.49 (networks 44.73-46.04) | vs Tik +1.92 [+1.56, +2.27] | vs blob-trained -7.91 [-8.22, -7.61]
+      mixed160-trained 45.35 (networks 44.00-45.84) | vs Tik +1.79 [+1.44, +2.13] | vs blob-trained -8.05 [-8.37, -7.72]
+  noise noiseless, 64 sensors: Tikhonov 90.51 | blob-trained 61.69
+      mixed40-trained 51.40 (networks 50.39-52.53) | vs Tik -39.11 [-39.58, -38.65] | vs blob-trained -10.29 [-10.51, -10.07]
+      mixed160-trained 51.60 (networks 50.16-52.35) | vs Tik -38.92 [-39.40, -38.44] | vs blob-trained -10.09 [-10.34, -9.86]
+  noise low, 16 sensors: Tikhonov 39.79 | blob-trained 53.32
+      mixed40-trained 45.47 (networks 44.72-46.02) | vs Tik +5.68 [+5.46, +5.89] | vs blob-trained -7.85 [-8.16, -7.55]
+      mixed160-trained 45.33 (networks 43.99-45.82) | vs Tik +5.54 [+5.33, +5.76] | vs blob-trained -7.99 [-8.30, -7.66]
+  noise low, 64 sensors: Tikhonov 51.78 | blob-trained 61.28
+      mixed40-trained 51.34 (networks 50.33-52.44) | vs Tik -0.44 [-0.88, -0.02] | vs blob-trained -9.94 [-10.17, -9.72]
+      mixed160-trained 51.53 (networks 50.11-52.26) | vs Tik -0.25 [-0.71, +0.21] | vs blob-trained -9.75 [-10.00, -9.50]
+  noise moderate, 16 sensors: Tikhonov 36.71 | blob-trained 51.75
+      mixed40-trained 44.99 (networks 44.32-45.44) | vs Tik +8.27 [+8.05, +8.50] | vs blob-trained -6.76 [-7.06, -6.45]
+      mixed160-trained 44.85 (networks 43.62-45.29) | vs Tik +8.14 [+7.90, +8.38] | vs blob-trained -6.90 [-7.21, -6.58]
+  noise moderate, 64 sensors: Tikhonov 44.06 | blob-trained 56.54
+      mixed40-trained 50.07 (networks 49.24-50.79) | vs Tik +6.01 [+5.65, +6.36] | vs blob-trained -6.46 [-6.73, -6.20]
+      mixed160-trained 50.24 (networks 49.19-50.73) | vs Tik +6.18 [+5.80, +6.55] | vs blob-trained -6.29 [-6.58, -6.02]
+  noise high, 16 sensors: Tikhonov 33.55 | blob-trained 44.73
+      mixed40-trained 41.25 (networks 41.00-41.53) | vs Tik +7.70 [+7.56, +7.84] | vs blob-trained -3.48 [-3.70, -3.25]
+      mixed160-trained 41.14 (networks 40.56-41.47) | vs Tik +7.59 [+7.44, +7.74] | vs blob-trained -3.59 [-3.83, -3.35]
+  noise high, 64 sensors: Tikhonov 36.27 | blob-trained 46.38
+      mixed40-trained 43.58 (networks 43.10-43.97) | vs Tik +7.31 [+7.17, +7.44] | vs blob-trained -2.79 [-2.92, -2.68]
+      mixed160-trained 43.73 (networks 43.52-44.00) | vs Tik +7.46 [+7.30, +7.61] | vs blob-trained -2.64 [-2.78, -2.52]
+  noise severe, 16 sensors: Tikhonov 28.38 | blob-trained 37.59
+      mixed40-trained 35.19 (networks 34.94-35.39) | vs Tik +6.81 [+6.71, +6.91] | vs blob-trained -2.40 [-2.52, -2.29]
+      mixed160-trained 35.08 (networks 34.98-35.29) | vs Tik +6.70 [+6.60, +6.80] | vs blob-trained -2.51 [-2.64, -2.39]
+  noise severe, 64 sensors: Tikhonov 30.53 | blob-trained 38.81
+      mixed40-trained 36.45 (networks 36.00-36.98) | vs Tik +5.92 [+5.85, +5.98] | vs blob-trained -2.36 [-2.41, -2.31]
+      mixed160-trained 36.59 (networks 36.44-36.80) | vs Tik +6.06 [+5.99, +6.13] | vs blob-trained -2.22 [-2.28, -2.16]
+-- SSIM
+  noise noiseless, 16 sensors: Tikhonov 0.939 | blob-trained 0.995
+      mixed40-trained 0.986 (networks 0.981-0.989) | vs Tik +0.047 [+0.041, +0.052] | vs blob-trained -0.009 [-0.010, -0.009]
+      mixed160-trained 0.985 (networks 0.981-0.989) | vs Tik +0.046 [+0.041, +0.052] | vs blob-trained -0.010 [-0.010, -0.009]
+  noise noiseless, 64 sensors: Tikhonov 1.000 | blob-trained 0.999
+      mixed40-trained 0.996 (networks 0.993-0.998) | vs Tik -0.004 [-0.004, -0.004] | vs blob-trained -0.003 [-0.003, -0.003]
+      mixed160-trained 0.996 (networks 0.991-0.998) | vs Tik -0.004 [-0.004, -0.004] | vs blob-trained -0.003 [-0.003, -0.003]
+  noise low, 16 sensors: Tikhonov 0.861 | blob-trained 0.995
+      mixed40-trained 0.986 (networks 0.980-0.989) | vs Tik +0.125 [+0.117, +0.132] | vs blob-trained -0.009 [-0.010, -0.009]
+      mixed160-trained 0.985 (networks 0.981-0.988) | vs Tik +0.124 [+0.117, +0.132] | vs blob-trained -0.010 [-0.010, -0.009]
+  noise low, 64 sensors: Tikhonov 0.990 | blob-trained 0.999
+      mixed40-trained 0.996 (networks 0.993-0.998) | vs Tik +0.006 [+0.005, +0.006] | vs blob-trained -0.003 [-0.003, -0.003]
+      mixed160-trained 0.996 (networks 0.991-0.998) | vs Tik +0.006 [+0.005, +0.006] | vs blob-trained -0.003 [-0.003, -0.003]
+  noise moderate, 16 sensors: Tikhonov 0.779 | blob-trained 0.992
+      mixed40-trained 0.982 (networks 0.977-0.986) | vs Tik +0.203 [+0.196, +0.209] | vs blob-trained -0.009 [-0.010, -0.009]
+      mixed160-trained 0.982 (networks 0.977-0.985) | vs Tik +0.203 [+0.196, +0.209] | vs blob-trained -0.010 [-0.010, -0.009]
+  noise moderate, 64 sensors: Tikhonov 0.943 | blob-trained 0.997
+      mixed40-trained 0.993 (networks 0.990-0.995) | vs Tik +0.051 [+0.047, +0.054] | vs blob-trained -0.004 [-0.004, -0.004]
+      mixed160-trained 0.993 (networks 0.989-0.995) | vs Tik +0.051 [+0.047, +0.054] | vs blob-trained -0.004 [-0.004, -0.003]
+  noise high, 16 sensors: Tikhonov 0.639 | blob-trained 0.945
+      mixed40-trained 0.936 (networks 0.933-0.937) | vs Tik +0.297 [+0.291, +0.303] | vs blob-trained -0.010 [-0.010, -0.009]
+      mixed160-trained 0.937 (networks 0.932-0.941) | vs Tik +0.298 [+0.292, +0.305] | vs blob-trained -0.008 [-0.009, -0.008]
+  noise high, 64 sensors: Tikhonov 0.776 | blob-trained 0.964
+      mixed40-trained 0.955 (networks 0.949-0.959) | vs Tik +0.179 [+0.172, +0.186] | vs blob-trained -0.010 [-0.010, -0.009]
+      mixed160-trained 0.957 (networks 0.953-0.961) | vs Tik +0.182 [+0.174, +0.189] | vs blob-trained -0.007 [-0.008, -0.007]
+  noise severe, 16 sensors: Tikhonov 0.380 | blob-trained 0.780
+      mixed40-trained 0.765 (networks 0.759-0.771) | vs Tik +0.385 [+0.382, +0.388] | vs blob-trained -0.015 [-0.015, -0.014]
+      mixed160-trained 0.770 (networks 0.760-0.776) | vs Tik +0.390 [+0.387, +0.393] | vs blob-trained -0.010 [-0.011, -0.010]
+  noise severe, 64 sensors: Tikhonov 0.712 | blob-trained 0.836
+      mixed40-trained 0.801 (networks 0.785-0.819) | vs Tik +0.089 [+0.085, +0.092] | vs blob-trained -0.034 [-0.036, -0.033]
+      mixed160-trained 0.811 (networks 0.805-0.821) | vs Tik +0.098 [+0.094, +0.102] | vs blob-trained -0.025 [-0.026, -0.024]
+
+== A. Blob test set under sound-speed mismatch (200 images per row), PSNR
+  c +1%, noise noiseless, 16 sensors: Tikhonov 3.56 | blob-trained 44.48 | mixed40-trained 41.80 (vs Tik +38.23 [+37.60, +38.84]) | mixed160-trained 41.68 (vs Tik +38.11 [+37.48, +38.73])
+  c +1%, noise noiseless, 64 sensors: Tikhonov -2.95 | blob-trained 48.02 | mixed40-trained 45.95 (vs Tik +48.89 [+48.55, +49.23]) | mixed160-trained 45.97 (vs Tik +48.92 [+48.57, +49.26])
+  c +1%, noise high, 16 sensors: Tikhonov 32.77 | blob-trained 41.89 | mixed40-trained 39.50 (vs Tik +6.74 [+6.60, +6.87]) | mixed160-trained 39.40 (vs Tik +6.63 [+6.49, +6.77])
+  c +1%, noise high, 64 sensors: Tikhonov 35.46 | blob-trained 44.16 | mixed40-trained 42.12 (vs Tik +6.66 [+6.53, +6.78]) | mixed160-trained 42.22 (vs Tik +6.76 [+6.62, +6.90])
+  c +2%, noise noiseless, 16 sensors: Tikhonov -2.33 | blob-trained 39.08 | mixed40-trained 37.84 (vs Tik +40.17 [+39.56, +40.75]) | mixed160-trained 37.79 (vs Tik +40.11 [+39.50, +40.70])
+  c +2%, noise noiseless, 64 sensors: Tikhonov -8.87 | blob-trained 42.39 | mixed40-trained 41.53 (vs Tik +50.40 [+50.06, +50.73]) | mixed160-trained 41.56 (vs Tik +50.42 [+50.09, +50.76])
+  c +2%, noise high, 16 sensors: Tikhonov 30.83 | blob-trained 38.16 | mixed40-trained 36.78 (vs Tik +5.94 [+5.81, +6.08]) | mixed160-trained 36.72 (vs Tik +5.89 [+5.76, +6.03])
+  c +2%, noise high, 64 sensors: Tikhonov 33.83 | blob-trained 40.94 | mixed40-trained 39.73 (vs Tik +5.90 [+5.79, +6.02]) | mixed160-trained 39.81 (vs Tik +5.98 [+5.86, +6.10])
+
+== B. Families of the generalisation check (10 images per row), PSNR / SSIM, published Tikhonov weights
+  1 to 3 Gaussian blobs (training family), noise noiseless, 16 sensors: tikhonov 44.1 / 0.941 | blob 54.2 / 0.996 | mixed40 46.1 / 0.987 | mixed160 46.0 / 0.987
+  1 to 3 Gaussian blobs (training family), noise noiseless, 64 sensors: tikhonov 91.7 / 1.000 | blob 62.3 / 0.999 | mixed40 51.6 / 0.996 | mixed160 51.8 / 0.996
+  1 to 3 Gaussian blobs (training family), noise high, 16 sensors: tikhonov 34.1 / 0.656 | blob 45.8 / 0.954 | mixed40 42.1 / 0.946 | mixed160 42.0 / 0.947
+  1 to 3 Gaussian blobs (training family), noise high, 64 sensors: tikhonov 37.4 / 0.806 | blob 47.5 / 0.971 | mixed40 44.6 / 0.962 | mixed160 44.7 / 0.964
+  8 Gaussian blobs, noise noiseless, 16 sensors: tikhonov 41.6 / 0.945 | blob 46.7 / 0.988 | mixed40 43.5 / 0.981 | mixed160 43.7 / 0.981
+  8 Gaussian blobs, noise noiseless, 64 sensors: tikhonov 87.4 / 1.000 | blob 57.6 / 0.999 | mixed40 50.6 / 0.994 | mixed160 50.7 / 0.994
+  8 Gaussian blobs, noise high, 16 sensors: tikhonov 31.2 / 0.602 | blob 40.7 / 0.924 | mixed40 38.4 / 0.917 | mixed160 38.4 / 0.919
+  8 Gaussian blobs, noise high, 64 sensors: tikhonov 33.5 / 0.713 | blob 43.7 / 0.953 | mixed40 41.0 / 0.940 | mixed160 41.2 / 0.943
+  2 or 3 sharp-edged discs, noise noiseless, 16 sensors: tikhonov 25.9 / 0.501 | blob 25.4 / 0.797 | mixed40 39.8 / 0.982 | mixed160 40.8 / 0.984
+  2 or 3 sharp-edged discs, noise noiseless, 64 sensors: tikhonov 37.4 / 0.944 | blob 26.8 / 0.937 | mixed40 46.6 / 0.995 | mixed160 47.4 / 0.995
+  2 or 3 sharp-edged discs, noise high, 16 sensors: tikhonov 23.7 / 0.333 | blob 25.4 / 0.737 | mixed40 36.3 / 0.887 | mixed160 36.8 / 0.890
+  2 or 3 sharp-edged discs, noise high, 64 sensors: tikhonov 27.0 / 0.591 | blob 26.7 / 0.873 | mixed40 40.2 / 0.910 | mixed160 40.7 / 0.914

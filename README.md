@@ -32,6 +32,12 @@ method; details and uncertainties are under Results.
   23.7 dB with 16 sensors and 26.7 against 27.0 dB with 64 sensors at 14 dB SNR), and on noiseless
   64-sensor discs it is 10.6 dB behind. With 8 blobs instead of 1 to 3 it keeps a 9 to 10 dB lead.
   The check on other image types is small (10 images per condition).
+- **A broader training set moves the prior but does not make it general.** Trained on blobs, discs,
+  ellipses and rectangles together, the same network is 11 to 18 dB ahead of Tikhonov on the
+  sharp-edged families at 26 and 14 dB SNR and still 6 to 8 dB ahead on blobs, at a cost of 2 to
+  4 dB against the blob-trained network under strong noise. On a family it never saw (thin
+  vessel-like lines) it is only 1 to 4 dB ahead with 16 sensors from 26 dB SNR down, and behind
+  Tikhonov with 64 sensors at every noise level except the most severe.
 - **U-Net vs. time-reversal.** After calibrating time-reversal's amplitude on training data, the
   U-Net improves PSNR by 4.9 dB (16 sensors) and 3.2 dB (64 sensors), with 95 % intervals well above
   zero. Its advantage shrinks as sensor noise grows, and results vary by about 2 dB between
@@ -349,6 +355,61 @@ PSNR in dB, mean over 200 test images per sensor count and over the 5 networks:
   sensors it is 10.6 dB behind Tikhonov (26.8 against 37.4 dB). The network has learned that images
   are a few smooth blobs; much of its gain is that prior.
 
+## Training on a Broader Image Distribution
+
+The unrolled networks above learned a prior for 1 to 3 smooth blobs. `scripts/mixed_phantom_experiment.py`
+trains the same architecture with the same recipe on four families in equal parts
+(`src/shape_phantoms.py`): smooth blobs, sharp-edged discs, sharp-edged rotated ellipses and
+sharp-edged rotated rectangles. The blob-trained networks are kept as the baseline, and every
+existing test set is unchanged.
+
+- Two mixed training sets, 5 networks each: 40 images (the baseline's data budget) and 160 images
+  (as many per family as the baseline has blobs, same number of optimiser steps).
+- A new test set of 100 images per family: the four training families and a fifth that no network
+  has seen, thin curved vessel-like lines. On this set Tikhonov's weight is selected on the mixed
+  training data, so it is tuned on the distribution the networks learn from.
+- The protocol was fixed before any result of this experiment was seen.
+
+PSNR difference to Tikhonov in dB at 14 dB SNR on the new test set (50 images per cell, mean over 5
+networks, 95 % interval; full tables for all noise levels in `report/mixed_phantom_results.txt`):
+
+| Test family | Sensors | Tikhonov | Trained on blobs | Trained on 4 families (40) | Trained on 4 families (160) |
+|---|---|---|---|---|---|
+| blobs | 16 | 33.5 dB | +11.0 [10.7, 11.3] | +7.6 [7.3, 7.9] | +7.6 [7.2, 7.9] |
+| blobs | 64 | 36.9 dB | +10.1 [10.0, 10.1] | +7.3 [7.1, 7.6] | +7.5 [7.2, 7.7] |
+| discs | 16 | 23.6 dB | +1.7 [1.6, 1.7] | +12.7 [12.1, 13.3] | +13.1 [12.6, 13.7] |
+| discs | 64 | 26.8 dB | -0.2 [-0.3, -0.1] | +12.5 [12.2, 12.9] | +13.0 [12.6, 13.4] |
+| ellipses | 16 | 24.0 dB | +1.7 [1.6, 1.8] | +13.3 [12.6, 14.0] | +13.9 [13.2, 14.6] |
+| ellipses | 64 | 27.5 dB | -0.4 [-0.5, -0.4] | +13.4 [12.9, 13.8] | +13.9 [13.5, 14.3] |
+| rectangles | 16 | 23.9 dB | +1.6 [1.5, 1.6] | +10.6 [9.9, 11.3] | +11.7 [11.0, 12.6] |
+| rectangles | 64 | 27.0 dB | -0.5 [-0.6, -0.4] | +12.1 [11.5, 12.6] | +13.1 [12.6, 13.6] |
+| vessels (unseen) | 16 | 28.8 dB | +6.1 [5.6, 6.7] | +2.4 [2.2, 2.7] | +2.3 [2.0, 2.5] |
+| vessels (unseen) | 64 | 36.2 dB | +4.2 [3.4, 5.1] | -3.1 [-3.7, -2.4] | -3.2 [-3.8, -2.6] |
+
+<p align="center">
+  <img src="report/mixed_phantom_advantage.png" width="760"
+       alt="PSNR difference to Tikhonov by test image family for networks trained on blobs, on four families with 40 images and on four families with 160 images, without noise and at 14 dB SNR, for 16 and 64 sensors.">
+</p>
+
+- **On families it was trained on, the mixed network keeps a large advantage over Tikhonov.** Under
+  noise it is 11 to 18 dB ahead on the three sharp-edged families at 26 and 14 dB SNR and 8 to 10 dB
+  ahead at 6 dB SNR, and 6 to 8 dB ahead on blobs at those three noise levels. On sharp-edged shapes
+  it is also ahead without noise (6 to 16 dB), where Tikhonov reaches only 26 to 37 dB.
+- **The cost of the broader prior on blobs is 2 to 4 dB under strong noise and 6 to 10 dB at low
+  noise.** On the unchanged 400-image blob test set the mixed networks are 2.2 to 3.6 dB below the
+  blob-trained networks at 14 and 6 dB SNR and 6.3 to 10.3 dB below at lower noise. They remain 6 to
+  8 dB ahead of noise-matched Tikhonov from 26 dB SNR down, are level with it at 40 dB SNR with 64
+  sensors, and are far behind it on noiseless 64-sensor data (51.6 against 90.5 dB). Under a 1 to
+  2 % sound-speed error they stay 1 to 3 dB below the blob-trained networks and ahead of Tikhonov.
+- **The advantage does not extend to an unseen family.** On vessel-like lines the mixed networks
+  are 1 to 4 dB ahead of Tikhonov with 16 sensors from 26 dB SNR down, but 3 to 16 dB behind it
+  with 64 sensors at 40, 26 and 14 dB SNR, and 33 dB behind on noiseless 64-sensor data. The blob-trained
+  networks do better on these smooth, soft-edged lines (4 to 8 dB ahead of Tikhonov at 14 and 6 dB
+  SNR) than the mixed networks, which were trained mostly on sharp edges. A broader training set
+  moved the prior; it did not make it general.
+- **The amount of training data is not the limit here.** 40 and 160 mixed images give results within
+  about 1 dB of each other (up to 2 dB on rectangles).
+
 ## Key Findings
 
 - On 400 test images, a U-Net refinement improves on amplitude-calibrated time-reversal by 4.9 dB
@@ -370,7 +431,11 @@ PSNR in dB, mean over 200 test images per sensor count and over the 5 networks:
   is 8 to 15 dB ahead of noise-matched Tikhonov on this test set under noise and stays ahead under a
   1 to 2 % sound-speed error. The gain relies on test images resembling the training images: on
   sharp-edged discs it disappears.
-- Everything here is synthetic (one phantom family, two sensor counts, one simulator); it
+- Training the unrolled network on four image families instead of one keeps a 6 to 18 dB advantage
+  over Tikhonov under noise on all four, for a loss of 2 to 4 dB on blobs under strong noise
+  relative to the blob-trained network. On an unseen family the advantage is small or negative.
+  The method is as good as the match between its training images and the images it is given.
+- Everything here is synthetic (five phantom families, two sensor counts, one simulator); it
   characterises this setup, not photoacoustic reconstruction in general.
 
 ## Noise Robustness
@@ -419,6 +484,7 @@ photoacoustic-reconstruction/
 │   ├── calibration.py       training-set amplitude calibration of time-reversal
 │   ├── tikhonov.py          Tikhonov inversion via an explicit forward matrix
 │   ├── unrolled.py          unrolled Tikhonov network (learned CNN between exact data-consistency solves)
+│   ├── shape_phantoms.py    further phantom families: discs, ellipses, rectangles, vessel-like lines
 │   └── stats.py             bootstrap confidence intervals over test images
 ├── scripts/
 │   ├── smoke_test.py            forward-model sanity check
@@ -430,6 +496,7 @@ photoacoustic-reconstruction/
 │   ├── model_mismatch_evaluation.py  all methods under a 1 to 2 % sound-speed error in the data
 │   ├── unrolled_evaluation.py    trains and evaluates the unrolled Tikhonov network on the same test set
 │   ├── unrolled_generalisation_check.py  the unrolled networks on phantoms unlike their training data
+│   ├── mixed_phantom_experiment.py  unrolled networks trained on four phantom families, against the blob-trained baseline
 │   ├── evaluate_mvp.py           original 8-image PSNR/SSIM comparison
 │   ├── plot_comparison_shared_scale.py  comparison figure on a common display range
 │   ├── evaluate_calibrated_baseline.py  amplitude-calibrated time-reversal baseline
@@ -437,7 +504,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    102 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
+├── tests/                    113 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
 └── report/                   evaluation figures and results
 ```
 
@@ -492,6 +559,10 @@ python scripts/model_mismatch_evaluation.py
 # about 2 hours on CPU, most of it training), then the check on other phantom types
 python scripts/unrolled_evaluation.py
 python scripts/unrolled_generalisation_check.py
+
+# unrolled networks trained on four phantom families (after unrolled_evaluation.py; about 3 hours
+# on CPU, most of it training; --train-only mixed40|mixed160 lets the two sets train in parallel)
+python scripts/mixed_phantom_experiment.py
 ```
 
 ## Reproducing the Experiments
@@ -511,7 +582,7 @@ run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-102 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+113 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -525,7 +596,8 @@ argmax of the training scores). The Tikhonov gradient is checked by central diff
 random points, weights and step sizes. The other 51 cover device selection, protection of the
 committed outputs, checkpoint portability and the remote GPU launchers, and 9 cover the unrolled
 network (data-consistency solves against the normal equations, reduction to Tikhonov and to iterated
-Tikhonov, routing by sensor count, gradients, checkpoints).
+Tikhonov, routing by sensor count, gradients, checkpoints) and 11 cover the additional phantom
+families (value range, reproducibility, placement inside the sensor circle).
 
 ## Limitations
 
@@ -550,6 +622,10 @@ Tikhonov, routing by sensor count, gradients, checkpoints).
   sharp-edged phantoms, and it has not been tried on measured data. All 10 networks select their
   checkpoint in the last 5 of 200 epochs, so they may be under-trained. The generalisation check is
   small and was added after the main results were seen.
+- The mixed-family experiment uses 50 test images per family and sensor count, binary sharp-edged
+  shapes on a 64 x 64 grid, and one unseen family. The networks trained on 160 images select their
+  checkpoint at the last epochs and may be under-trained. Only the noise-trained variant was
+  trained on mixed data.
 - All experiments run on laptop CPU (and MPS for the original network).
 
 ## References
