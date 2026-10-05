@@ -17,7 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # the files it uses). A commit cannot name itself, so REF names the commit that added the workflow;
 # the commit that records this pin changes only this file and the two generated notebooks. To run a
 # later version, set REF to its full SHA, rebuild the notebooks and commit them the same way.
-REF = "d63d754fdac185902c8424b67649424f3c488428"
+REF = "7b5712295577f548c0d1f2070195eb52e794b4d0"
 REPO_URL = "https://github.com/AdebanjiAdelowo/photoacoustic-reconstruction.git"
 
 PLATFORMS = {
