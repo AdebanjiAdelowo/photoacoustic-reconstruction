@@ -123,6 +123,19 @@ def test_remote_install_keeps_platform_torch_and_cpu_jax():
     assert not any("cuda" in l.lower() for l in lines)  # no GPU build of JAX
 
 
+def test_preinstalled_jax_gpu_plugins_are_removed(monkeypatch):
+    installed = {"jax-cuda12-plugin": "0.11.1", "jax-cuda12-pjrt": "0.11.1"}
+    commands = []
+    monkeypatch.setattr(remote_setup, "installed_version", installed.get)
+    monkeypatch.setattr(remote_setup.subprocess, "run",
+                        lambda cmd: commands.append(cmd) or type("Result", (), {"returncode": 0})())
+    assert remote_setup.remove_jax_gpu_plugins() == ["jax-cuda12-plugin", "jax-cuda12-pjrt"]
+    assert commands[0][1:] == ["-m", "pip", "uninstall", "--yes", "jax-cuda12-plugin", "jax-cuda12-pjrt"]
+    assert not any("torch" in part for part in commands[0][1:])
+    installed.clear()
+    assert remote_setup.remove_jax_gpu_plugins() == [] and len(commands) == 1
+
+
 # --- full-run gate ---
 
 def test_full_experiment_does_not_start_without_confirmation(tmp_path, capsys):

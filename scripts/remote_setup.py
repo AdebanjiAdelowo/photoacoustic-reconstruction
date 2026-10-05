@@ -2,7 +2,9 @@
 
 The platform's CUDA build of PyTorch is kept. Everything else is installed at the versions pinned in
 requirements.txt, with pip constrained so that it cannot replace torch. JAX stays the CPU build from
-PyPI. If the pinned set cannot be installed on the platform's Python, the install step fails and the
+PyPI, and a GPU plugin for JAX that the platform preinstalled is removed: it belongs to the platform's
+own JAX version, the pinned jaxlib cannot load it, and the physics must not run on a GPU in any case.
+If the pinned set cannot be installed on the platform's Python, the install step fails and the
 conflict is reported; nothing is substituted silently.
 
     python scripts/remote_setup.py preflight --out results/<RUN_ID>/env/preflight.json
@@ -103,6 +105,20 @@ def install(preflight_path):
             "INSTALL FAILED: the pinned requirements could not be installed on this platform "
             f"(Python {sys.version.split()[0]}). Do not loosen the pins to continue: the scientific "
             "dependencies define the numbers. Record the pip error above and see REMOTE_GPU.md.")
+    remove_jax_gpu_plugins()
+
+
+def remove_jax_gpu_plugins():
+    """Uninstall preinstalled JAX GPU plugins. jaxlib imports a plugin whenever one is installed, even
+    with JAX_PLATFORMS=cpu, and a plugin built for another JAX version makes `import jax` fail."""
+    present = [d for d in JAX_GPU_DISTRIBUTIONS if installed_version(d)]
+    if not present:
+        print("no JAX GPU plugin installed; nothing to remove")
+        return []
+    print("removing JAX GPU plugins (JAX runs on CPU only):", ", ".join(present))
+    if subprocess.run([sys.executable, "-m", "pip", "uninstall", "--yes", *present]).returncode != 0:
+        raise SystemExit("INSTALL FAILED: could not remove the JAX GPU plugins: " + ", ".join(present))
+    return present
 
 
 def verify(preflight_path, out):
@@ -122,10 +138,18 @@ def verify(preflight_path, out):
         if installed.get(name) != pins.get(name):
             problems.append(f"{name}: installed {installed.get(name)}, pinned {pins.get(name)}")
 
+    gpu_plugins = {d: v for d in JAX_GPU_DISTRIBUTIONS if (v := installed_version(d))}
+    if gpu_plugins:
+        problems.append(f"JAX GPU plugins are still installed: {gpu_plugins}")
+
     sys.path.insert(0, ROOT)
     from src.device import jax_metadata
 
-    jax_meta = jax_metadata()
+    try:
+        jax_meta = jax_metadata()
+    except Exception as exc:  # e.g. a plugin or NumPy that the pinned jaxlib cannot work with
+        raise SystemExit(f"VERIFY FAILED: JAX could not be imported or initialised: {type(exc).__name__}: {exc}\n"
+                         f"  other problems: {problems}")
     if not jax_meta["jax_cpu_only"]:
         problems.append(f"JAX is not CPU-only: {jax_meta['jax_devices']}")
     report = {
@@ -136,7 +160,9 @@ def verify(preflight_path, out):
                       "reason": "the platform's CUDA build of PyTorch is kept; requirements.txt pins the "
                                 "version used on the development machine"}}
         if after["torch_version"] != pins.get("torch") else {},
-        "jax_gpu_distributions_present": {d: v for d in JAX_GPU_DISTRIBUTIONS if (v := installed_version(d))},
+        "jax_gpu_distributions_present": gpu_plugins,
+        "jax_gpu_distributions_removed": {d: v for d, v in before.get("jax_gpu_distributions_before", {}).items()
+                                          if v and d not in gpu_plugins},
         "problems": problems,
     }
     print(json.dumps(report, indent=2))

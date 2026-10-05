@@ -112,9 +112,13 @@ remote GPU machine `scripts/remote_setup.py` does the following:
 - `preflight` records Python, PyTorch, CUDA and GPU before anything is installed, and stops if CUDA
   is not available.
 - `install` installs every line of `requirements.txt` except `torch`, with pip constrained to the
-  PyTorch version already present, so the platform's CUDA build cannot be replaced.
+  PyTorch version already present, so the platform's CUDA build cannot be replaced. It then removes
+  any GPU plugin for JAX that the platform preinstalled (`jax-cuda12-plugin`, `jax-cuda12-pjrt`).
+  Such a plugin belongs to the platform's own JAX version; jaxlib loads it whenever it is installed,
+  even with `JAX_PLATFORMS=cpu`, and the pinned jaxlib cannot import it.
 - `verify` checks that PyTorch is unchanged and still sees the GPU, that NumPy, SciPy, scikit-image,
-  JAX, jaxlib, jaxdf and j-Wave are at their pinned versions, and that JAX reports CPU devices only.
+  JAX, jaxlib, jaxdf and j-Wave are at their pinned versions, that no JAX GPU plugin is installed, and
+  that JAX reports CPU devices only.
 
 The one deviation from `requirements.txt` is therefore the PyTorch version, which is recorded in
 `results/<RUN_ID>/env/environment.json`. If the pinned packages cannot be installed on the platform's
@@ -223,8 +227,9 @@ CUDA memory.
 
 - The pinned packages may not install on the Python version of the remote platform. The workflow
   stops in that case.
-- A GPU build of JAX that the platform preinstalled may remain installed next to the pinned CPU
-  JAX. It is not used (`JAX_PLATFORMS=cpu`, verified), and its presence is recorded.
+- Replacing the platform's JAX, NumPy and SciPy with the pinned versions leaves other preinstalled
+  packages (for example Flax or Optax) with unmet requirements. pip reports these as conflicts. They
+  are not used by this project, but the session should not be reused for other work.
 - j-Wave on Linux x86 may not reproduce the macOS arm64 data bit for bit. This is the platform
   effect above and is independent of CUDA.
 - The CUDA path has been exercised only through its CPU and MPS equivalents and with mocked CUDA
