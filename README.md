@@ -280,6 +280,62 @@ the results file. Every Tikhonov-minus-U-Net interval excludes zero.)
 *PSNR on the 400 test images at each noise level; Tikhonov uses $\mu$ selected per noise level on
 training data. The noiseless 64-sensor Tikhonov value (90.5 dB) is off the scale.*
 
+## Unrolled Tikhonov Network
+
+The U-Net never uses the forward model, and Tikhonov has no learned prior and needs its weight
+chosen for the noise level. `src/unrolled.py` combines the two in a model-based unrolled network
+(the MoDL scheme): an initial Tikhonov solve, then 5 rounds of a small residual CNN (28,365
+parameters, shared by all rounds) followed by an exact data-consistency solve
+$\arg\min_x \|Ax - y\|^2 + \lambda_k \|x - z_k\|^2$ through the eigendecomposition of $A^\top A$.
+The weights $\lambda_k$ are learned, one per round and sensor count. The method is not given the
+noise level. Before training it is iterated Tikhonov regularisation.
+
+Protocol (`scripts/unrolled_evaluation.py`, fixed before any test result was seen): the same 40
+training and 8 validation phantoms, 5 networks per variant, 200 epochs, CPU. One variant is trained
+on noiseless recordings, like the U-Net; the other is trained with a noise level drawn at random
+from the five evaluation levels. The test recordings and noise draws are exactly those of the other
+methods, so results pair image by image.
+
+PSNR in dB, mean over 200 test images per sensor count and over the 5 networks:
+
+| Sensors | Noise | Calibrated TR | U-Net | Tikhonov (weight per noise level) | Unrolled, trained without noise | Unrolled, trained with noise | Unrolled with noise minus Tikhonov |
+|---|---|---|---|---|---|---|---|
+| 16 | noiseless | 26.94 | 31.84 | 43.56 | 66.28 | 53.40 | +9.84 [9.31, 10.34] |
+| 16 | low (40 dB SNR) | 26.94 | 31.84 | 39.79 | 55.38 | 53.32 | +13.53 [13.16, 13.90] |
+| 16 | moderate (26 dB SNR) | 26.90 | 31.71 | 36.71 | 41.89 | 51.75 | +15.03 [14.80, 15.25] |
+| 16 | high (14 dB SNR) | 26.29 | 30.33 | 33.55 | 29.68 | 44.73 | +11.18 [10.99, 11.36] |
+| 16 | severe (6 dB SNR) | 23.95 | 27.10 | 28.38 | 21.49 | 37.59 | +9.22 [9.12, 9.31] |
+| 64 | noiseless | 29.27 | 32.48 | 90.51 | 79.38 | 61.69 | -28.82 [-29.11, -28.53] |
+| 64 | low (40 dB SNR) | 29.27 | 32.47 | 51.78 | 54.57 | 61.28 | +9.50 [9.23, 9.77] |
+| 64 | moderate (26 dB SNR) | 29.24 | 32.41 | 44.06 | 40.57 | 56.54 | +12.48 [12.35, 12.59] |
+| 64 | high (14 dB SNR) | 28.92 | 31.67 | 36.27 | 28.29 | 46.38 | +10.10 [10.06, 10.14] |
+| 64 | severe (6 dB SNR) | 27.46 | 29.50 | 30.53 | 20.13 | 38.81 | +8.28 [8.21, 8.34] |
+
+<p align="center">
+  <img src="report/unrolled_noise.png" width="760"
+       alt="PSNR against sensor noise level for calibrated time-reversal, the U-Net, Tikhonov and the two unrolled Tikhonov variants, for 16 and 64 sensors.">
+</p>
+
+- Trained with noise, the unrolled network is ahead of Tikhonov with a noise-matched weight by 8 to
+  15 dB at every noise level and sensor count, without being told the noise level. The one
+  exception is noiseless data with 64 sensors, where Tikhonov inverts its own model exactly
+  (90.5 dB). Its SSIM is 0.78 to 0.999. The 5 networks agree closely (standard deviation of their
+  means 0.1 to 1.2 dB).
+- Trained without noise, it is the most accurate method on noiseless data with 16 sensors, but it
+  degrades quickly and falls below the U-Net at 14 dB SNR. Noise in training, not the architecture
+  alone, gives the robustness.
+- Under a 1 or 2 % sound-speed error (`report/unrolled_results.txt`), the noise-trained network
+  reaches 44.5 and 39.1 dB (16 sensors) and 48.0 and 42.4 dB (64 sensors) on noiseless data, where
+  Tikhonov with the noiseless weight fails and the U-Net stays near 32 dB. At 14 dB SNR it is 7 to
+  9 dB ahead of Tikhonov.
+- **This advantage is specific to the phantom family.** A check added after these results
+  (`scripts/unrolled_generalisation_check.py`, 10 images per row, `report/unrolled_generalisation.txt`)
+  applies the same networks to other images. With 8 blobs instead of 1 to 3 the noise-trained
+  network keeps a 9 to 10 dB lead at 14 dB SNR. On sharp-edged discs the lead is gone: 25.4 against
+  23.7 dB (16 sensors) and 26.7 against 27.0 dB (64 sensors) at 14 dB SNR, and without noise at 64
+  sensors it is 10.6 dB behind Tikhonov (26.8 against 37.4 dB). The network has learned that images
+  are a few smooth blobs; much of its gain is that prior.
+
 ## Key Findings
 
 - On 400 test images, a U-Net refinement improves on amplitude-calibrated time-reversal by 4.9 dB
@@ -297,6 +353,10 @@ training data. The noiseless 64-sensor Tikhonov value (90.5 dB) is off the scale
   2 %), and at 2 % with 16 sensors the best of the 5 networks is ahead of it in PSNR and the average network in SSIM. With the
   weight tuned for noiseless matched data, Tikhonov fails under the same mismatch. Time reversal and
   the U-Net change by less than 0.5 dB.
+- An unrolled network that alternates a small CNN with exact Tikhonov solves, trained with noise,
+  is 8 to 15 dB ahead of noise-matched Tikhonov on this test set under noise and stays ahead under a
+  1 to 2 % sound-speed error. The gain relies on test images resembling the training images: on
+  sharp-edged discs it disappears.
 - Everything here is synthetic (one phantom family, two sensor counts, one simulator); it
   characterises this setup, not photoacoustic reconstruction in general.
 
@@ -345,6 +405,7 @@ photoacoustic-reconstruction/
 │   ├── evaluate.py          PSNR/SSIM evaluation
 │   ├── calibration.py       training-set amplitude calibration of time-reversal
 │   ├── tikhonov.py          Tikhonov inversion via an explicit forward matrix
+│   ├── unrolled.py          unrolled Tikhonov network (learned CNN between exact data-consistency solves)
 │   └── stats.py             bootstrap confidence intervals over test images
 ├── scripts/
 │   ├── smoke_test.py            forward-model sanity check
@@ -354,6 +415,8 @@ photoacoustic-reconstruction/
 │   ├── tikhonov_evaluation.py    Tikhonov selection on training data and evaluation on the same test set
 │   ├── tikhonov_diagnostics.py   conditioning of the forward matrices and the oracle-weight diagnostic
 │   ├── model_mismatch_evaluation.py  all methods under a 1 to 2 % sound-speed error in the data
+│   ├── unrolled_evaluation.py    trains and evaluates the unrolled Tikhonov network on the same test set
+│   ├── unrolled_generalisation_check.py  the unrolled networks on phantoms unlike their training data
 │   ├── evaluate_mvp.py           original 8-image PSNR/SSIM comparison
 │   ├── plot_comparison_shared_scale.py  comparison figure on a common display range
 │   ├── evaluate_calibrated_baseline.py  amplitude-calibrated time-reversal baseline
@@ -361,7 +424,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    93 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
+├── tests/                    102 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
 └── report/                   evaluation figures and results
 ```
 
@@ -411,6 +474,11 @@ python scripts/tikhonov_evaluation.py
 
 # model mismatch: sound speed 1 and 2 % off for the data, every method nominal (about 15 minutes)
 python scripts/model_mismatch_evaluation.py
+
+# unrolled Tikhonov network: 10 networks and their evaluation (after the three scripts above;
+# about 2 hours on CPU, most of it training), then the check on other phantom types
+python scripts/unrolled_evaluation.py
+python scripts/unrolled_generalisation_check.py
 ```
 
 ## Reproducing the Experiments
@@ -430,7 +498,7 @@ run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-93 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+102 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -442,7 +510,9 @@ behaviour), and the evaluation protocol (disjoint seed ranges for every split, t
 allocation, calibration gains that match a training-only fit, and a Tikhonov weight that is the
 argmax of the training scores). The Tikhonov gradient is checked by central differences at several
 random points, weights and step sizes. The other 51 cover device selection, protection of the
-committed outputs, checkpoint portability and the remote GPU launchers.
+committed outputs, checkpoint portability and the remote GPU launchers, and 9 cover the unrolled
+network (data-consistency solves against the normal equations, reduction to Tikhonov and to iterated
+Tikhonov, routing by sensor count, gradients, checkpoints).
 
 ## Limitations
 
@@ -460,11 +530,19 @@ committed outputs, checkpoint portability and the remote GPU launchers.
   known in simulation; with an unknown noise level the weight would need to be estimated.
 - Noise is i.i.d. Gaussian, added at evaluation time only, with networks trained without noise. No
   noise-aware training, correlated noise or measured noise statistics were studied.
-- The learned model leaves a faint background haze that lowers whole-image SSIM; this is not
+- The U-Net leaves a faint background haze that lowers whole-image SSIM; this is not
   corrected.
+- The unrolled network inverts the same discrete forward model that generated the data, as Tikhonov
+  does, and was trained and tested on one phantom family. Its lead does not carry over to
+  sharp-edged phantoms, and it has not been tried on measured data. All 10 networks select their
+  checkpoint in the last 5 of 200 epochs, so they may be under-trained. The generalisation check is
+  small and was added after the main results were seen.
 - All experiments run on laptop CPU (and MPS for the original network).
 
 ## References
+
+Aggarwal, H. K., Mani, M. P., & Jacob, M. (2019). *MoDL: Model-based deep learning architecture for
+inverse problems.* IEEE Transactions on Medical Imaging, 38(2), 394-405.
 
 Stanziola, A., Arridge, S. R., Cox, B. T., & Treeby, B. E. (2023). *j-Wave: An open-source
 differentiable wave simulator.* SoftwareX. arXiv:2207.01499.
