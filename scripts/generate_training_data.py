@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.baselines import time_reversal_reconstruction
 from src.forward_model import build_domain_and_medium, simulate_sensor_data, sparse_view_sensor_array
+from src.jax_cache import simulation_done
 from src.phantoms import random_blob_phantom
 from src.run_safety import ensure_writable
 
@@ -69,6 +70,7 @@ def generate_split(split_name: str, n_examples: int, timing=None):
         recording, time_axis = simulate_sensor_data(phantom, domain, medium, sensor_pos)
         t_b = time.perf_counter()
         recon = time_reversal_reconstruction(recording, sensor_pos, domain, medium, time_axis)
+        simulation_done(simulation_done())  # two simulations; keeps compiled code bounded (src/jax_cache.py)
         if timing is not None:
             timing["forward_seconds"] = timing.get("forward_seconds", 0.0) + (t_b - t_a)
             timing["time_reversal_seconds"] = timing.get("time_reversal_seconds", 0.0) + (time.perf_counter() - t_b)

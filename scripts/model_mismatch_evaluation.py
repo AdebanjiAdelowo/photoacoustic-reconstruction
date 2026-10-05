@@ -54,6 +54,7 @@ from src.calibration import training_scales  # noqa: E402
 from src.device import to_numpy  # noqa: E402
 from src.evaluate import psnr, ssim  # noqa: E402
 from src.forward_model import DEFAULT_SOUND_SPEED, build_domain_and_medium, sparse_view_sensor_array  # noqa: E402
+from src.jax_cache import simulation_done  # noqa: E402
 from src.stats import bootstrap_mean_ci, paired_bootstrap_ci  # noqa: E402
 from src.tikhonov import Tikhonov  # noqa: E402
 
@@ -87,12 +88,12 @@ def main():
     per_image = {}
     for delta in DELTAS:
         _, medium_true = build_domain_and_medium(GRID_SIZE, sound_speed=DEFAULT_SOUND_SPEED * (1 + delta))
-        clean = [simulate(phantoms[i], domain, medium_true, time_axis, sensors[int(n_sensors[i])])
+        clean = [simulation_done(simulate(phantoms[i], domain, medium_true, time_axis, sensors[int(n_sensors[i])]))
                  for i in range(len(phantoms))]
         for label, rel_std in LEVELS:
             rng = np.random.default_rng(NOISE_SEED + int(round(rel_std * 100000)))
             recs = [add_sensor_noise(c, rel_std, rng) for c in clean]
-            tr = np.stack([time_reversal_reconstruction(r, sensors[int(k)], domain, medium_nom, time_axis)
+            tr = np.stack([simulation_done(time_reversal_reconstruction(r, sensors[int(k)], domain, medium_nom, time_axis))
                            for r, k in zip(recs, n_sensors)])
             out = {"tr_raw": tr, "tr_cal": tr * gain_img}
             x = torch.from_numpy(tr).unsqueeze(1)

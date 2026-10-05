@@ -361,7 +361,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    92 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
+├── tests/                    93 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
 └── report/                   evaluation figures and results
 ```
 
@@ -430,7 +430,7 @@ run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-92 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+93 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -441,7 +441,7 @@ simulation, adjoint identity, gradient against finite differences, normal equati
 behaviour), and the evaluation protocol (disjoint seed ranges for every split, the 200/200 sensor
 allocation, calibration gains that match a training-only fit, and a Tikhonov weight that is the
 argmax of the training scores). The Tikhonov gradient is checked by central differences at several
-random points, weights and step sizes. The other 50 cover device selection, protection of the
+random points, weights and step sizes. The other 51 cover device selection, protection of the
 committed outputs, checkpoint portability and the remote GPU launchers.
 
 ## Limitations

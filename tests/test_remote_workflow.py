@@ -136,6 +136,19 @@ def test_preinstalled_jax_gpu_plugins_are_removed(monkeypatch):
     assert remote_setup.remove_jax_gpu_plugins() == [] and len(commands) == 1
 
 
+def test_compiled_code_is_released_periodically(monkeypatch):
+    import src.jax_cache as jax_cache
+
+    cleared = []
+    monkeypatch.setattr(jax_cache.jax, "clear_caches", lambda: cleared.append(jax_cache._simulations))
+    monkeypatch.setattr(jax_cache, "_simulations", 0)
+    marker = object()
+    assert all(jax_cache.simulation_done(marker) is marker for _ in range(2 * jax_cache.CLEAR_EVERY + 1))
+    assert cleared == [jax_cache.CLEAR_EVERY, 2 * jax_cache.CLEAR_EVERY]
+    # about 80 memory mappings per simulation must stay far below Linux's 65,530 per process
+    assert 80 * jax_cache.CLEAR_EVERY < 65530 / 4
+
+
 # --- full-run gate ---
 
 def test_full_experiment_does_not_start_without_confirmation(tmp_path, capsys):

@@ -230,6 +230,10 @@ CUDA memory.
 - Replacing the platform's JAX, NumPy and SciPy with the pinned versions leaves other preinstalled
   packages (for example Flax or Optax) with unmet requirements. pip reports these as conflicts. They
   are not used by this project, but the session should not be reused for other work.
+- Each j-Wave simulation leaves compiled code in memory, and Linux limits the number of memory
+  mappings per process, so a long run would stop with "LLVM compilation error: Cannot allocate
+  memory" after about 800 simulations. `src/jax_cache.py` clears JAX's compilation caches every 50
+  simulations in the data-generation and evaluation loops. This does not change any result.
 - j-Wave on Linux x86 may not reproduce the macOS arm64 data bit for bit. This is the platform
   effect above and is independent of CUDA.
 - The CUDA path has been exercised only through its CPU and MPS equivalents and with mocked CUDA

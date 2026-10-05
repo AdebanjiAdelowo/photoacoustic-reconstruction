@@ -56,6 +56,7 @@ from src.calibration import fit_scale, fit_scales_per_sensor_count  # noqa: E402
 from src.device import DEVICE_CHOICES, assert_jax_cpu, synchronize, to_numpy  # noqa: E402
 from src.evaluate import psnr, ssim  # noqa: E402
 from src.forward_model import build_domain_and_medium, simulate_sensor_data, sparse_view_sensor_array  # noqa: E402
+from src.jax_cache import simulation_done  # noqa: E402
 from src.phantoms import random_blob_phantom  # noqa: E402
 from src.reconstruction_net import ReconstructionUNet  # noqa: E402
 from src.run_safety import ensure_writable, write_json  # noqa: E402
@@ -88,6 +89,7 @@ def generate_test_set(test_path=TEST_PATH, data_dir="data", timing=None):
         rec, t_axis = simulate_sensor_data(phantoms[i], domain, medium, sensors[int(n_sensors[i])])
         t_b = time.perf_counter()
         recons[i] = time_reversal_reconstruction(rec, sensors[int(n_sensors[i])], domain, medium, t_axis)
+        simulation_done(simulation_done())  # two simulations; keeps compiled code bounded (src/jax_cache.py)
         if timing is not None:
             timing["forward_seconds"] = timing.get("forward_seconds", 0.0) + (t_b - t_a)
             timing["time_reversal_seconds"] = timing.get("time_reversal_seconds", 0.0) + (time.perf_counter() - t_b)
@@ -175,7 +177,8 @@ def main(device_choice="cpu", data_dir="data", ckpt_dir=CKPT_DIR, out_dir="repor
         timing["tr_cache_used"] = True
     else:
         t_a = time.perf_counter()
-        clean = [simulate_sensor_data(phantoms[i], domain, medium, sensors[int(n_sensors[i])]) for i in range(len(phantoms))]
+        clean = [simulation_done(simulate_sensor_data(phantoms[i], domain, medium, sensors[int(n_sensors[i])]))
+                 for i in range(len(phantoms))]
         timing["forward_clean_seconds"] = time.perf_counter() - t_a
     methods = ["tr_raw", "tr_cal"] + [name for name, _ in scored]
     per_image = {}  # (level, method, metric) -> (N,)
@@ -190,6 +193,7 @@ def main(device_choice="cpu", data_dir="data", ckpt_dir=CKPT_DIR, out_dir="repor
             for i, (rec, t_axis) in enumerate(clean):
                 noisy = add_sensor_noise(rec, rel_std, noise_rng)
                 tr[i] = time_reversal_reconstruction(noisy, sensors[int(n_sensors[i])], domain, medium, t_axis)
+                simulation_done()
             timing["time_reversal_seconds"] += time.perf_counter() - t_a
         tr_by_level[label] = tr
         if rel_std == 0.0:
