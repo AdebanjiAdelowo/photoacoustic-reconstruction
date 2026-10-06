@@ -1,0 +1,65 @@
+{
+  "archive_filename": "photoacoustic_edgegap_checkpoints_c1f1b3e.tar.gz",
+  "sha256": "cea2fbc1c8ec48f27de350d2c47188b4cfe58bf0d43ee82df55d0591406ba317",
+  "bytes": 1076413,
+  "created_utc": "2026-10-06T20:29:29+00:00",
+  "members": [
+    {
+      "name": "experiments/unrolled_mixed/mixed160_seed0.pt",
+      "sha256": "f64fa475f49d28e5be7b6d8ef72e3138d06086dd75c6de07b29b76549ed3114c",
+      "bytes": 118329
+    },
+    {
+      "name": "experiments/unrolled_mixed/mixed160_seed1.pt",
+      "sha256": "e685c43078a643b058b167ee2936145033a76c719d83a7e94377dd07c74c1677",
+      "bytes": 118329
+    },
+    {
+      "name": "experiments/unrolled_mixed/mixed160_seed2.pt",
+      "sha256": "86b745f9145ec1ee5c2965869a6fa518b7e8e9bb79321876463a9585fbd82790",
+      "bytes": 118329
+    },
+    {
+      "name": "experiments/unrolled_mixed/mixed160_seed3.pt",
+      "sha256": "b85aac19a31d83e2990b29b7a9dd5e07cb0dbfd30e08f0d8391ff17e445c1147",
+      "bytes": 118329
+    },
+    {
+      "name": "experiments/unrolled_mixed/mixed160_seed4.pt",
+      "sha256": "53794a4709f6582138dd9a50e316fc7473e9a4162ee1c05cb21e5c7c1b37968d",
+      "bytes": 118329
+    },
+    {
+      "name": "experiments/unrolled_mixed/edgefill160_seed0.pt",
+      "sha256": "602fab18f088ffa93c067526823005eda30d554cb12873d953b853451a189c7b",
+      "bytes": 118380
+    },
+    {
+      "name": "experiments/unrolled_mixed/edgefill160_seed1.pt",
+      "sha256": "a0e291265190bec2315a54dd3c1076e4476dc19ed7e5a1a30e902679f71db8ff",
+      "bytes": 118380
+    },
+    {
+      "name": "experiments/unrolled_mixed/edgefill160_seed2.pt",
+      "sha256": "1daf1036074906898ddb94814721f8b94f35a5507fdb267a165e3d22d74c6f4e",
+      "bytes": 118380
+    },
+    {
+      "name": "experiments/unrolled_mixed/edgefill160_seed3.pt",
+      "sha256": "bbec32a0528e936495a9f1ba1998bf7043d5c83bc58209fdc276c38e7223342e",
+      "bytes": 118380
+    },
+    {
+      "name": "experiments/unrolled_mixed/edgefill160_seed4.pt",
+      "sha256": "57428bc58747a5874caf95b70e6d46815796e80baac8e4691008b7a0ded5972f",
+      "bytes": 118380
+    },
+    {
+      "name": "report/checkpoint_manifest.json",
+      "sha256": "f37114e37e8cb8af119aabb7f81e94dd73211e366bf34568a768e61b454b98b5",
+      "bytes": 26335
+    }
+  ],
+  "restore": "tar -xzf ARCHIVE -C REPOSITORY_ROOT (never over existing checkpoints), then python scripts/checkpoint_manifest.py --verify",
+  "note": "The archive is not committed and its location is not recorded here. The member hashes of the checkpoints are those of report/checkpoint_manifest.json."
+}

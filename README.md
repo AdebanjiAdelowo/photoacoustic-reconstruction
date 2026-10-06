@@ -509,10 +509,10 @@ PSNR difference to Tikhonov in dB at 14 dB SNR:
   global statistics explain the ranking of families; they are not a reliable detector of images the
   network will fail on.
 
-Three qualifications apply to this analysis. Each sweep point is 20 images (10 per sensor count).
-The explanation by a gap in edge sharpness was formed after the sweep was seen, not predicted. In
-the vessel sweep, width and edge sharpness change together, so that sweep alone cannot separate
-them; the disc sweep varies edge sharpness at constant size.
+Three qualifications apply to this analysis. Each sweep point is 20 images per sensor count (40 per
+sweep level). The explanation by a gap in edge sharpness was formed after the sweep was seen, not
+predicted. In the vessel sweep, width and edge sharpness change together, so that sweep alone cannot
+separate them; the disc sweep varies edge sharpness at constant size.
 
 ## Edge-Sharpness Intervention
 
@@ -668,6 +668,7 @@ photoacoustic-reconstruction/
 │   ├── mixed_phantom_experiment.py  unrolled networks trained on four phantom families, against the blob-trained baseline
 │   ├── prior_shift_analysis.py   advantage over Tikhonov against distance from the training images, and controlled shifts
 │   ├── edge_gap_intervention.py  networks trained with edges of intermediate sharpness, against pre-set success criteria
+│   ├── checkpoint_manifest.py    hashes and provenance of the intervention's ten checkpoints; verifies a restored copy
 │   ├── evaluate_mvp.py           original 8-image PSNR/SSIM comparison
 │   ├── plot_comparison_shared_scale.py  comparison figure on a common display range
 │   ├── evaluate_calibrated_baseline.py  amplitude-calibrated time-reversal baseline
@@ -675,7 +676,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    121 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
+├── tests/                    126 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
 └── report/                   evaluation figures and results
 ```
 
@@ -748,11 +749,12 @@ python scripts/edge_gap_intervention.py
 The headline results need only `generate_training_data.py`, then `expanded_evaluation.py` and
 `tikhonov_evaluation.py`. Both are deterministic: rerunning them reproduces
 `report/expanded_eval_*` and `report/tikhonov_*` byte for byte. For the original 8-image evaluation,
-run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_results.txt`,
-`report/mvp_comparison.png`, and `report/mvp_ssim_diagnosis.png`. `evaluate_noise_sensitivity.py`
-(see Noise Robustness) requires `experiments/unet_checkpoint.pt` to already exist (from
-`train.py`) but does not retrain it; it writes `report/noise_sensitivity_results.txt` and
-`report/noise_sensitivity_results.json`.
+run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_results.txt` and
+`report/mvp_comparison.png`. It does not write `report/mvp_ssim_diagnosis.png`: that figure was
+committed with the original evaluation and no script in the repository regenerates it.
+`evaluate_noise_sensitivity.py` (see Noise Robustness) requires `experiments/unet_checkpoint.pt` to
+already exist (from `train.py`) but does not retrain it; it writes
+`report/noise_sensitivity_results.txt` and `report/noise_sensitivity_results.json`.
 
 ## Tests
 
@@ -760,7 +762,7 @@ run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-121 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+126 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -777,7 +779,8 @@ network (data-consistency solves against the normal equations, reduction to Tikh
 Tikhonov, routing by sensor count, gradients, checkpoints) and 11 cover the additional phantom
 families (value range, reproducibility, placement inside the sensor circle) and 4 cover the image
 statistics and the distance measure, and 4 cover the intervention (that only edge sharpness differs
-from the control training set, and the verdict logic).
+from the control training set, and the verdict logic). 5 cover the checkpoint manifest (detection of
+missing or altered files, agreement with the committed results).
 
 ## Limitations
 
