@@ -654,6 +654,7 @@ photoacoustic-reconstruction/
 │   ├── unrolled.py          unrolled Tikhonov network (learned CNN between exact data-consistency solves)
 │   ├── shape_phantoms.py    further phantom families: discs, ellipses, rectangles, vessel-like lines
 │   ├── image_statistics.py  structural statistics of an image and a distance from a set of training images
+│   ├── thin_structures.py   line phantoms with separate core width and edge width, straight or curved
 │   └── stats.py             bootstrap confidence intervals over test images
 ├── scripts/
 │   ├── smoke_test.py            forward-model sanity check
@@ -669,14 +670,15 @@ photoacoustic-reconstruction/
 │   ├── prior_shift_analysis.py   advantage over Tikhonov against distance from the training images, and controlled shifts
 │   ├── edge_gap_intervention.py  networks trained with edges of intermediate sharpness, against pre-set success criteria
 │   ├── checkpoint_manifest.py    hashes and provenance of the intervention's ten checkpoints; verifies a restored copy
+│   ├── thin_structure_study.py   existing networks on a width x edge-profile x geometry test set (report/thin_structure_preregistration.md)
 │   ├── evaluate_mvp.py           original 8-image PSNR/SSIM comparison
 │   ├── plot_comparison_shared_scale.py  comparison figure on a common display range
 │   ├── evaluate_calibrated_baseline.py  amplitude-calibrated time-reversal baseline
 │   └── evaluate_noise_sensitivity.py  original 8-image noise check (noise model reused by the expanded evaluation)
-├── configs/                  mvp.yaml
+├── configs/                  mvp.yaml, thin_structure_study.json
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    126 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
+├── tests/                    161 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
 └── report/                   evaluation figures and results
 ```
 
@@ -762,7 +764,7 @@ already exist (from `train.py`) but does not retrain it; it writes
 pytest
 ```
 
-126 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+161 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -780,7 +782,10 @@ Tikhonov, routing by sensor count, gradients, checkpoints) and 11 cover the addi
 families (value range, reproducibility, placement inside the sensor circle) and 4 cover the image
 statistics and the distance measure, and 4 cover the intervention (that only edge sharpness differs
 from the control training set, and the verdict logic). 5 cover the checkpoint manifest (detection of
-missing or altered files, agreement with the committed results).
+missing or altered files, agreement with the committed results), 9 the line phantoms with separate
+core and edge width, and 26 the thin-structure study before its evaluation (the locked design, the
+shared test images, reproducible noise, the verdict logic on invented scores, and the refusal to run
+on an uncommitted design).
 
 ## Limitations
 
