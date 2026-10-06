@@ -63,7 +63,9 @@ def _rectangles(rng, size):
     return img
 
 
-def _vessels(rng, size):
+def _vessels(rng, size, width_px=None):
+    """`width_px` replaces the drawn profile width (standard deviation, in pixels) of every line; the
+    random draws are the same either way, so the curves do not change."""
     X, Y = _grid(size)
     img = np.zeros((size, size))
     t = np.linspace(0.0, 1.0, 200)
@@ -75,6 +77,8 @@ def _vessels(rng, size):
         px, py = x0 + (x1 - x0) * t + nx * bend, y0 + (y1 - y0) * t + ny * bend
         d2 = ((X[..., None] - px) ** 2 + (Y[..., None] - py) ** 2).min(axis=-1)
         width, a = rng.uniform(0.015, 0.03) * size, rng.uniform(0.5, 1.0)
+        if width_px is not None:
+            width = float(width_px)
         img = np.maximum(img, a * np.exp(-d2 / (2 * width ** 2)))
     return img
 
@@ -90,4 +94,11 @@ def shape_phantom(family: str, size: int, seed: int) -> np.ndarray:
     if family == "blobs":
         return random_blob_phantom(size=size, seed=seed, n_blobs=int(rng.integers(1, 4)))
     img = _GENERATORS[family](rng, size)
+    return (img / img.max()).astype(np.float32)
+
+
+def vessel_phantom(size: int, seed: int, width_px: float) -> np.ndarray:
+    """The vessel phantom of `seed` with every line given the profile width `width_px` (standard
+    deviation in pixels; the family itself draws 0.96 to 1.92 px on a 64-point grid)."""
+    img = _vessels(np.random.default_rng(seed), size, width_px)
     return (img / img.max()).astype(np.float32)

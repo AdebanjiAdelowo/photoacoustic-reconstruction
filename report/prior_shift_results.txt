@@ -1,0 +1,125 @@
+Prior-shift analysis (scripts/prior_shift_analysis.py)
+
+Why does the unrolled network lose its advantage on some images? Distance from the training
+distribution, and two controlled shifts.
+
+The mixed-family experiment (scripts/mixed_phantom_experiment.py) showed that the advantage of the
+unrolled network over Tikhonov depends on the test image family. This analysis asks whether that is
+explained by how far a test image lies from the images the network was trained on.
+
+Protocol (fixed before any result of this analysis was seen):
+
+  1. Distance and advantage on the saved shape test set (no new reconstructions).
+     For each of the 500 test images of set C, src/image_statistics.py gives seven structural
+     statistics of the ground-truth image. The distance of a test image from a training set is the
+     Mahalanobis distance of its statistics from those of the training images: the 40 blob images of
+     data/train.npz for the blob-trained networks, the 160 mixed images for the mixed160 networks.
+     The outcome is the saved per-image PSNR advantage of the network (mean of 5) over Tikhonov.
+     Hypothesis H1: the advantage decreases with distance. Reported: Spearman rank correlation with a
+     95 % bootstrap interval, pooled over the 250 images of each sensor count and within each family,
+     for every noise level, and the correlation of the advantage with each single statistic.
+
+  2. Controlled shifts (new images, existing networks, nothing retrained).
+     One structural property is varied while everything else is held fixed:
+       * vessel width: the same 40 vessel curves drawn with profile widths (standard deviation) of
+         1, 1.5, 2, 3, 4 and 6 pixels. Thin lines are unlike every training image; wide ones
+         approach elongated blobs.
+       * edge blur: the same 40 disc images blurred with a Gaussian of 0, 0.5, 1, 2, 3 and 4
+         pixels. Sharp discs are a mixed-training family and unlike blobs; blurred discs approach
+         blobs.
+     20 images per sensor count and level, without noise and at the "high" noise level (14 dB SNR).
+     Tikhonov uses the weights selected on the mixed160 training split
+     (report/mixed_phantom_results.json). Phantom seeds 400000+ and 410000+, noise seed 969000.
+     Hypothesis H2: the advantage of both network groups over Tikhonov grows with vessel width.
+     Hypothesis H3: with increasing blur the blob-trained networks gain an advantage on discs, and
+     the mixed networks keep theirs.
+
+== 1. Distance from the training distribution and advantage over Tikhonov (shape test set)
+
+Mean structural statistics by test family:
+  blobs      tv_ratio 0.362, max_gradient 0.196, hf_fraction 0.01, spectral_centroid 0.0434, area_fraction 0.0187, thickness 7.76, n_components 1.54
+  discs      tv_ratio 0.376, max_gradient 0.707, hf_fraction 0.149, spectral_centroid 0.08, area_fraction 0.0458, thickness 11.3, n_components 1.68
+  ellipses   tv_ratio 0.47, max_gradient 0.707, hf_fraction 0.19, spectral_centroid 0.0942, area_fraction 0.0332, thickness 8.46, n_components 1.61
+  rectangles tv_ratio 0.464, max_gradient 0.707, hf_fraction 0.188, spectral_centroid 0.0933, area_fraction 0.0349, thickness 8.51, n_components 1.45
+  vessels    tv_ratio 0.557, max_gradient 0.39, hf_fraction 0.132, spectral_centroid 0.0686, area_fraction 0.0203, thickness 4.71, n_components 1.21
+Median distance from the training set, by test family:
+  blob-trained      blobs 2.1, discs 21.9, ellipses 21.7, rectangles 21.9, vessels 9.0
+  mixed160-trained  blobs 2.4, discs 2.0, ellipses 1.7, rectangles 1.8, vessels 3.6
+
+Spearman correlation of distance with the PSNR advantage over Tikhonov, [95 % CI]:
+  noise noiseless 16 sensors, blob-trained: pooled -0.73 [-0.79, -0.64] | within family: blobs +0.12, discs -0.37, ellipses +0.37, rectangles +0.32, vessels -0.45
+  noise noiseless 16 sensors, mixed160-trained: pooled -0.57 [-0.64, -0.48] | within family: blobs -0.26, discs +0.07, ellipses +0.24, rectangles -0.06, vessels +0.30
+  noise noiseless 64 sensors, blob-trained: pooled +0.74 [+0.67, +0.80] | within family: blobs -0.44, discs +0.21, ellipses +0.20, rectangles +0.39, vessels -0.09
+  noise noiseless 64 sensors, mixed160-trained: pooled -0.56 [-0.63, -0.47] | within family: blobs -0.22, discs -0.10, ellipses +0.02, rectangles +0.01, vessels +0.06
+  noise low       16 sensors, blob-trained: pooled -0.73 [-0.80, -0.64] | within family: blobs -0.16, discs -0.31, ellipses +0.41, rectangles +0.30, vessels -0.56
+  noise low       16 sensors, mixed160-trained: pooled -0.60 [-0.68, -0.51] | within family: blobs -0.40, discs +0.07, ellipses +0.23, rectangles -0.06, vessels +0.13
+  noise low       64 sensors, blob-trained: pooled -0.27 [-0.40, -0.12] | within family: blobs -0.40, discs +0.13, ellipses +0.22, rectangles +0.35, vessels -0.84
+  noise low       64 sensors, mixed160-trained: pooled -0.66 [-0.73, -0.57] | within family: blobs -0.16, discs -0.10, ellipses +0.08, rectangles +0.07, vessels -0.28
+  noise moderate  16 sensors, blob-trained: pooled -0.73 [-0.80, -0.64] | within family: blobs -0.19, discs -0.22, ellipses +0.41, rectangles +0.35, vessels -0.63
+  noise moderate  16 sensors, mixed160-trained: pooled -0.59 [-0.68, -0.49] | within family: blobs -0.36, discs +0.07, ellipses +0.23, rectangles -0.06, vessels -0.05
+  noise moderate  64 sensors, blob-trained: pooled -0.61 [-0.70, -0.50] | within family: blobs -0.20, discs +0.26, ellipses +0.05, rectangles +0.08, vessels -0.84
+  noise moderate  64 sensors, mixed160-trained: pooled -0.65 [-0.72, -0.56] | within family: blobs -0.10, discs -0.10, ellipses +0.09, rectangles +0.11, vessels -0.38
+  noise high      16 sensors, blob-trained: pooled -0.72 [-0.79, -0.63] | within family: blobs +0.22, discs -0.14, ellipses +0.37, rectangles +0.36, vessels -0.69
+  noise high      16 sensors, mixed160-trained: pooled -0.60 [-0.69, -0.50] | within family: blobs -0.67, discs +0.02, ellipses +0.24, rectangles +0.01, vessels -0.24
+  noise high      64 sensors, blob-trained: pooled -0.77 [-0.83, -0.69] | within family: blobs +0.31, discs +0.24, ellipses -0.40, rectangles -0.25, vessels -0.84
+  noise high      64 sensors, mixed160-trained: pooled -0.66 [-0.74, -0.56] | within family: blobs -0.38, discs -0.24, ellipses +0.21, rectangles +0.22, vessels -0.77
+  noise severe    16 sensors, blob-trained: pooled -0.82 [-0.87, -0.76] | within family: blobs +0.15, discs -0.19, ellipses -0.32, rectangles -0.34, vessels -0.79
+  noise severe    16 sensors, mixed160-trained: pooled -0.52 [-0.63, -0.40] | within family: blobs -0.60, discs -0.13, ellipses +0.54, rectangles +0.05, vessels -0.66
+  noise severe    64 sensors, blob-trained: pooled -0.79 [-0.84, -0.74] | within family: blobs -0.07, discs +0.01, ellipses -0.67, rectangles -0.45, vessels -0.62
+  noise severe    64 sensors, mixed160-trained: pooled -0.66 [-0.74, -0.55] | within family: blobs -0.40, discs -0.31, ellipses +0.38, rectangles +0.16, vessels -0.67
+
+Spearman correlation of each statistic with the advantage (noise high):
+  16 sensors, blob-trained: tv_ratio -0.01, max_gradient -0.87, hf_fraction -0.62, spectral_centroid -0.68, area_fraction -0.57, thickness -0.48, n_components -0.09
+  16 sensors, mixed160-trained: tv_ratio -0.10, max_gradient +0.74, hf_fraction +0.50, spectral_centroid +0.62, area_fraction +0.31, thickness +0.49, n_components +0.14
+  64 sensors, blob-trained: tv_ratio -0.41, max_gradient -0.82, hf_fraction -0.89, spectral_centroid -0.91, area_fraction -0.29, thickness -0.16, n_components -0.17
+  64 sensors, mixed160-trained: tv_ratio -0.03, max_gradient +0.74, hf_fraction +0.56, spectral_centroid +0.69, area_fraction +0.33, thickness +0.48, n_components +0.27
+
+== 2. Controlled shifts (20 images per row; PSNR in dB; difference to Tikhonov with 95 % CI)
+  vessel_width 1, noise noiseless 16 sensors (thickness 3.4 px, max gradient 0.50): Tikhonov 29.76 | blob-trained 31.36, +1.59 [+1.32, +1.85], distance 21.5 | mixed160-trained 30.70, +0.93 [+0.71, +1.15], distance 6.2
+  vessel_width 1, noise noiseless 64 sensors (thickness 3.2 px, max gradient 0.50): Tikhonov 62.08 | blob-trained 35.89, -26.19 [-27.22, -25.08], distance 24.0 | mixed160-trained 31.06, -31.02 [-32.21, -29.85], distance 6.7
+  vessel_width 1, noise high      16 sensors (thickness 3.4 px, max gradient 0.50): Tikhonov 28.08 | blob-trained 31.28, +3.20 [+2.92, +3.49], distance 21.5 | mixed160-trained 30.58, +2.51 [+2.34, +2.65], distance 6.2
+  vessel_width 1, noise high      64 sensors (thickness 3.2 px, max gradient 0.50): Tikhonov 36.94 | blob-trained 35.70, -1.24 [-1.47, -0.99], distance 24.0 | mixed160-trained 30.98, -5.96 [-6.19, -5.71], distance 6.7
+  vessel_width 1.5, noise noiseless 16 sensors (thickness 5.1 px, max gradient 0.37): Tikhonov 32.27 | blob-trained 35.65, +3.37 [+2.83, +3.90], distance 8.0 | mixed160-trained 30.95, -1.32 [-1.73, -0.87], distance 3.3
+  vessel_width 1.5, noise noiseless 64 sensors (thickness 4.4 px, max gradient 0.37): Tikhonov 69.76 | blob-trained 43.57, -26.19 [-28.11, -24.38], distance 8.6 | mixed160-trained 32.62, -37.14 [-39.88, -34.60], distance 3.6
+  vessel_width 1.5, noise high      16 sensors (thickness 5.1 px, max gradient 0.37): Tikhonov 29.12 | blob-trained 35.29, +6.17 [+5.60, +6.75], distance 8.0 | mixed160-trained 30.65, +1.53 [+1.33, +1.73], distance 3.3
+  vessel_width 1.5, noise high      64 sensors (thickness 4.4 px, max gradient 0.37): Tikhonov 36.29 | blob-trained 41.79, +5.50 [+5.04, +5.96], distance 8.6 | mixed160-trained 32.34, -3.95 [-4.27, -3.61], distance 3.6
+  vessel_width 2, noise noiseless 16 sensors (thickness 6.5 px, max gradient 0.29): Tikhonov 35.12 | blob-trained 39.95, +4.83 [+3.99, +5.68], distance 4.1 | mixed160-trained 34.65, -0.47 [-1.02, +0.07], distance 2.7
+  vessel_width 2, noise noiseless 64 sensors (thickness 5.9 px, max gradient 0.29): Tikhonov 71.57 | blob-trained 49.27, -22.31 [-24.00, -20.81], distance 4.7 | mixed160-trained 39.80, -31.77 [-34.82, -28.97], distance 2.9
+  vessel_width 2, noise high      16 sensors (thickness 6.5 px, max gradient 0.29): Tikhonov 30.03 | blob-trained 38.41, +8.39 [+7.71, +9.11], distance 4.1 | mixed160-trained 33.59, +3.56 [+3.34, +3.80], distance 2.7
+  vessel_width 2, noise high      64 sensors (thickness 5.9 px, max gradient 0.29): Tikhonov 34.77 | blob-trained 43.45, +8.68 [+8.23, +9.12], distance 4.7 | mixed160-trained 37.42, +2.65 [+2.41, +2.91], distance 2.9
+  vessel_width 3, noise noiseless 16 sensors (thickness 9.3 px, max gradient 0.20): Tikhonov 40.31 | blob-trained 45.33, +5.02 [+4.19, +5.97], distance 5.4 | mixed160-trained 42.44, +2.13 [+1.69, +2.59], distance 3.0
+  vessel_width 3, noise noiseless 64 sensors (thickness 8.2 px, max gradient 0.20): Tikhonov 73.28 | blob-trained 53.31, -19.97 [-21.52, -18.61], distance 6.3 | mixed160-trained 48.76, -24.52 [-27.77, -21.69], distance 3.4
+  vessel_width 3, noise high      16 sensors (thickness 9.3 px, max gradient 0.20): Tikhonov 30.51 | blob-trained 39.70, +9.19 [+8.92, +9.46], distance 5.4 | mixed160-trained 37.34, +6.83 [+6.61, +7.05], distance 3.0
+  vessel_width 3, noise high      64 sensors (thickness 8.2 px, max gradient 0.20): Tikhonov 32.47 | blob-trained 42.33, +9.85 [+9.64, +10.07], distance 6.3 | mixed160-trained 39.59, +7.12 [+6.92, +7.31], distance 3.4
+  vessel_width 4, noise noiseless 16 sensors (thickness 11.9 px, max gradient 0.15): Tikhonov 44.10 | blob-trained 46.82, +2.71 [+2.21, +3.26], distance 7.9 | mixed160-trained 44.67, +0.56 [+0.13, +1.03], distance 4.3
+  vessel_width 4, noise noiseless 64 sensors (thickness 10.9 px, max gradient 0.15): Tikhonov 73.98 | blob-trained 53.73, -20.25 [-22.06, -18.61], distance 9.0 | mixed160-trained 50.51, -23.47 [-26.51, -20.78], distance 4.6
+  vessel_width 4, noise high      16 sensors (thickness 11.9 px, max gradient 0.15): Tikhonov 29.82 | blob-trained 38.70, +8.88 [+8.72, +9.02], distance 7.9 | mixed160-trained 36.80, +6.98 [+6.79, +7.17], distance 4.3
+  vessel_width 4, noise high      64 sensors (thickness 10.9 px, max gradient 0.15): Tikhonov 30.81 | blob-trained 40.95, +10.14 [+9.99, +10.27], distance 9.0 | mixed160-trained 38.55, +7.74 [+7.57, +7.91], distance 4.6
+  vessel_width 6, noise noiseless 16 sensors (thickness 17.0 px, max gradient 0.10): Tikhonov 47.59 | blob-trained 45.32, -2.27 [-2.80, -1.81], distance 15.2 | mixed160-trained 44.38, -3.21 [-3.85, -2.63], distance 8.0
+  vessel_width 6, noise noiseless 64 sensors (thickness 16.3 px, max gradient 0.10): Tikhonov 74.19 | blob-trained 51.52, -22.67 [-24.33, -21.11], distance 17.0 | mixed160-trained 48.97, -25.23 [-27.23, -23.36], distance 8.7
+  vessel_width 6, noise high      16 sensors (thickness 17.0 px, max gradient 0.10): Tikhonov 27.86 | blob-trained 35.89, +8.03 [+7.89, +8.18], distance 15.2 | mixed160-trained 34.07, +6.21 [+6.00, +6.42], distance 8.0
+  vessel_width 6, noise high      64 sensors (thickness 16.3 px, max gradient 0.10): Tikhonov 28.37 | blob-trained 38.46, +10.09 [+9.96, +10.22], distance 17.0 | mixed160-trained 36.01, +7.65 [+7.47, +7.83], distance 8.7
+  disc_blur 0, noise noiseless 16 sensors (thickness 11.3 px, max gradient 0.70): Tikhonov 26.23 | blob-trained 25.60, -0.62 [-0.72, -0.53], distance 21.8 | mixed160-trained 41.43, +15.21 [+13.25, +16.99], distance 1.8
+  disc_blur 0, noise noiseless 64 sensors (thickness 11.5 px, max gradient 0.71): Tikhonov 37.23 | blob-trained 27.06, -10.17 [-10.64, -9.81], distance 21.7 | mixed160-trained 45.97, +8.74 [+7.34, +10.06], distance 2.1
+  disc_blur 0, noise high      16 sensors (thickness 11.3 px, max gradient 0.70): Tikhonov 23.92 | blob-trained 25.49, +1.57 [+1.48, +1.66], distance 21.8 | mixed160-trained 36.60, +12.68 [+11.52, +13.73], distance 1.8
+  disc_blur 0, noise high      64 sensors (thickness 11.5 px, max gradient 0.71): Tikhonov 27.15 | blob-trained 26.96, -0.20 [-0.31, -0.08], distance 21.7 | mixed160-trained 40.16, +13.01 [+12.39, +13.59], distance 2.1
+  disc_blur 0.5, noise noiseless 16 sensors (thickness 11.2 px, max gradient 0.57): Tikhonov 28.83 | blob-trained 28.95, +0.13 [-0.01, +0.27], distance 15.5 | mixed160-trained 34.96, +6.13 [+5.74, +6.45], distance 2.0
+  disc_blur 0.5, noise noiseless 64 sensors (thickness 11.5 px, max gradient 0.57): Tikhonov 44.06 | blob-trained 31.30, -12.77 [-13.21, -12.42], distance 16.1 | mixed160-trained 35.62, -8.45 [-8.84, -8.12], distance 2.3
+  disc_blur 0.5, noise high      16 sensors (thickness 11.2 px, max gradient 0.57): Tikhonov 25.99 | blob-trained 28.73, +2.74 [+2.60, +2.89], distance 15.5 | mixed160-trained 33.70, +7.71 [+7.38, +8.02], distance 2.0
+  disc_blur 0.5, noise high      64 sensors (thickness 11.5 px, max gradient 0.57): Tikhonov 30.21 | blob-trained 31.04, +0.83 [+0.59, +1.05], distance 16.1 | mixed160-trained 34.78, +4.56 [+4.38, +4.75], distance 2.3
+  disc_blur 1, noise noiseless 16 sensors (thickness 10.6 px, max gradient 0.35): Tikhonov 34.69 | blob-trained 36.60, +1.91 [+1.58, +2.26], distance 7.7 | mixed160-trained 33.10, -1.59 [-2.01, -1.17], distance 2.4
+  disc_blur 1, noise noiseless 64 sensors (thickness 11.3 px, max gradient 0.36): Tikhonov 75.76 | blob-trained 43.16, -32.61 [-32.98, -32.23], distance 8.6 | mixed160-trained 36.34, -39.42 [-39.74, -39.09], distance 2.8
+  disc_blur 1, noise high      16 sensors (thickness 10.6 px, max gradient 0.35): Tikhonov 29.21 | blob-trained 35.59, +6.38 [+6.13, +6.66], distance 7.7 | mixed160-trained 31.92, +2.71 [+2.37, +3.05], distance 2.4
+  disc_blur 1, noise high      64 sensors (thickness 11.3 px, max gradient 0.36): Tikhonov 33.07 | blob-trained 40.33, +7.26 [+6.94, +7.56], distance 8.6 | mixed160-trained 34.53, +1.46 [+1.17, +1.75], distance 2.8
+  disc_blur 2, noise noiseless 16 sensors (thickness 10.0 px, max gradient 0.20): Tikhonov 43.96 | blob-trained 48.49, +4.53 [+3.76, +5.39], distance 3.2 | mixed160-trained 46.05, +2.09 [+1.44, +2.82], distance 2.6
+  disc_blur 2, noise noiseless 64 sensors (thickness 10.9 px, max gradient 0.20): Tikhonov 87.79 | blob-trained 58.82, -28.98 [-29.52, -28.49], distance 4.4 | mixed160-trained 51.84, -35.96 [-36.68, -35.30], distance 3.1
+  disc_blur 2, noise high      16 sensors (thickness 10.0 px, max gradient 0.20): Tikhonov 31.81 | blob-trained 41.43, +9.62 [+9.40, +9.85], distance 3.2 | mixed160-trained 38.95, +7.14 [+6.84, +7.43], distance 2.6
+  disc_blur 2, noise high      64 sensors (thickness 10.9 px, max gradient 0.20): Tikhonov 33.53 | blob-trained 43.77, +10.25 [+10.14, +10.35], distance 4.4 | mixed160-trained 41.16, +7.64 [+7.50, +7.77], distance 3.1
+  disc_blur 3, noise noiseless 16 sensors (thickness 10.7 px, max gradient 0.15): Tikhonov 49.67 | blob-trained 53.08, +3.41 [+2.53, +4.39], distance 3.0 | mixed160-trained 47.55, -2.11 [-2.84, -1.35], distance 3.2
+  disc_blur 3, noise noiseless 64 sensors (thickness 11.1 px, max gradient 0.14): Tikhonov 87.34 | blob-trained 61.07, -26.27 [-26.52, -26.03], distance 3.5 | mixed160-trained 53.03, -34.31 [-34.73, -33.87], distance 3.5
+  disc_blur 3, noise high      16 sensors (thickness 10.7 px, max gradient 0.15): Tikhonov 31.97 | blob-trained 41.36, +9.39 [+9.23, +9.56], distance 3.0 | mixed160-trained 39.17, +7.20 [+7.00, +7.40], distance 3.2
+  disc_blur 3, noise high      64 sensors (thickness 11.1 px, max gradient 0.14): Tikhonov 33.27 | blob-trained 43.58, +10.31 [+10.22, +10.41], distance 3.5 | mixed160-trained 41.47, +8.20 [+8.07, +8.31], distance 3.5
+  disc_blur 4, noise noiseless 16 sensors (thickness 12.0 px, max gradient 0.12): Tikhonov 52.30 | blob-trained 51.32, -0.99 [-1.53, -0.41], distance 4.3 | mixed160-trained 46.97, -5.33 [-5.87, -4.77], distance 3.8
+  disc_blur 4, noise noiseless 64 sensors (thickness 12.5 px, max gradient 0.12): Tikhonov 86.67 | blob-trained 58.92, -27.75 [-27.98, -27.54], distance 4.1 | mixed160-trained 52.47, -34.20 [-34.52, -33.87], distance 4.2
+  disc_blur 4, noise high      16 sensors (thickness 12.0 px, max gradient 0.12): Tikhonov 31.29 | blob-trained 40.18, +8.89 [+8.76, +9.03], distance 4.3 | mixed160-trained 38.15, +6.86 [+6.66, +7.05], distance 3.8
+  disc_blur 4, noise high      64 sensors (thickness 12.5 px, max gradient 0.12): Tikhonov 32.44 | blob-trained 42.75, +10.31 [+10.21, +10.40], distance 4.1 | mixed160-trained 40.66, +8.22 [+8.09, +8.33], distance 4.2
