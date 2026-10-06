@@ -56,6 +56,14 @@ method; details and uncertainties are under Results.
   worst advantage in the valley from about 2 dB to 7 to 9 dB, cost about 1 dB on sharp shapes, and
   improved unseen thin vessels by 3 to 4 dB. The thinnest vessels with 64 sensors remain behind
   Tikhonov.
+- **The remaining failure follows thin soft structures, not curvature.** A pre-registered test set
+  that varies core width, edge width and curvature separately reproduces the deficit on the thinnest
+  lines with 64 sensors (3.5 dB behind Tikhonov). At a fixed edge width, a line 6 pixels wide is
+  10.5 dB better relative to Tikhonov than the thinnest line, in all five networks; curved lines are
+  not worse than straight ones. The pre-set classification is nevertheless "mixed": the check that
+  the edge-sharpness repair reappears on bars was not met with 64 sensors, and width and edge
+  profile cannot be fully separated near one pixel. With 16 sensors the networks are ahead of
+  Tikhonov in every cell.
 - **U-Net vs. time-reversal.** After calibrating time-reversal's amplitude on training data, the
   U-Net improves PSNR by 4.9 dB (16 sensors) and 3.2 dB (64 sensors), with 95 % intervals well above
   zero. Its advantage shrinks as sensor noise grows, and results vary by about 2 dB between
@@ -568,6 +576,98 @@ the vessel failure, but the remaining deficit on the thinnest lines shows it is 
 experiment fills one identified gap in one training set; it does not show that the prior is now
 general.
 
+## Thin-Structure Diagnostic
+
+After the edge-sharpness intervention the networks remained behind Tikhonov on the thinnest
+vessel-like lines with 64 sensors. In that sweep one number set both the thickness of a line and the
+sharpness of its edges, and every line was curved. `scripts/thin_structure_study.py` varies the
+three properties separately. `src/thin_structures.py` draws lines whose cross-section is a flat core
+of width w convolved with a Gaussian of width s, on a straight or a curved centreline; with w = 0
+and a curved centreline it is the vessel family. The ten existing networks (five control, five
+intervention) and Tikhonov are evaluated at 14 dB SNR on 5 core widths, 5 edge widths and 2
+geometries: 48 cells, 50 images per cell, the same images for both sensor counts. No network was
+trained.
+
+The design, hypotheses, thresholds (3 dB for a material effect, 1 dB for a negligible one),
+classification rules and stopping rule are in `report/thin_structure_preregistration.md` and
+`configs/thin_structure_study.json`, committed (`1a2d0d6`) before any image of the test set was
+reconstructed. A first execution stopped in its first cell, before any score was computed, because
+the Tikhonov call could not take a batch with a single sensor count. The call was corrected
+(`ab3c4aa`) with the design and the analysis unchanged, which the script verifies against the design
+commit, and the evaluation was then run once (`report/thin_structure_execution_record.json`).
+
+<p align="center">
+  <img src="report/thin_structure_heatmaps.png" width="640"
+       alt="PSNR advantage over Tikhonov at 14 dB SNR as a map over core width and edge width, for the control and intervention networks, straight and curved lines, 16 and 64 sensors.">
+</p>
+
+**Pre-registered findings with 64 sensors.** A is the PSNR advantage over Tikhonov of the mean of
+the five intervention networks; profiles are written (w, s) in pixels; intervals are 95 % over
+images.
+
+| | Quantity | Result | Verdict |
+|---|---|---|---|
+| P0, failure present | A on curved (0, 1) | -3.46 [-3.69, -3.23] dB (Tikhonov 36.42, networks 32.97 dB) | holds |
+| H1, thinness | A(6, 1) - A(0, 1), straight lines | +10.54 [10.24, 10.85] dB | supported |
+| H2, edge profile (positive control) | straight bars, w = 6: dip of the control below s = 2; gain of the intervention in the valley at s = 0.5 and 1; paired gain at (6, 1) | 6.43 dB; 2.78 dB (3 dB required); +6.23 [6.01, 6.44] dB | not reproduced |
+| H3, geometry | A(straight) - A(curved) at (0, 1) | -0.70 [-1.06, -0.32] dB | modest or indeterminate |
+| H4, sharp thin bar | mean of A(4, 0) and A(6, 0), minus A(1, 0) | +12.58 [12.12, 13.03] dB | supported |
+
+- **The earlier failure is reproduced.** The vessel sweep gave -3.96 dB on 20 images; the new set
+  gives -3.46 dB on 50 other images, with the same network PSNR (32.97 dB).
+- **H1.** All five networks show the effect (9.8 to 11.7 dB), as do curved lines (+9.78 dB) and the
+  two secondary contrasts at fixed edge width (+3.60 dB at s = 0.5, +5.70 dB at s = 1.5). Of the
+  10.54 dB, 6.69 dB is the networks' PSNR, which is higher on the thick structure, and 3.85 dB is
+  Tikhonov's, which is lower on it: more than a third of the effect is Tikhonov doing well on thin
+  lines.
+- **H3.** Curved lines are slightly better than straight ones at all four thin profiles tested (0.2
+  to 0.7 dB). Curvature is not supported as a cause of the failure.
+- **H4.** A sharp bar 1 pixel wide is 1.07 dB ahead of Tikhonov, against 13 to 14 dB for bars of
+  width 4 and 6. The networks' PSNR accounts for 11.63 dB of the difference.
+- **H2.** The intervention restores the advantage at s = 1 but reaches only +2.94 dB at s = 0.5, so
+  the valley gain misses the 3 dB criterion. Statements about edge profile on this test set are
+  therefore not validated.
+- **Interactions.** Neither is flagged with 64 sensors (width x edge -1.76 dB, width x geometry
+  -0.76 dB; the flag is at 2 dB).
+- **Classification by the pre-set rule, 64 sensors:**
+  `mixed: thinness, edge profile (edge axis not validated: H2 not reproduced)`.
+- **16 sensors:** `failure not reproduced: no classification`. The thin curved line is 4.32 dB
+  ahead of Tikhonov, and both network groups are ahead in all 48 cells.
+
+Structural thinness is the best-supported factor, and curvature is not supported as a cause. Edge
+profile remains relevant in the descriptive results, but its positive control was not reproduced.
+Which factor dominates is unresolved.
+
+**Descriptive findings** (not hypotheses of the design; `report/thin_structure_response_surface.csv`
+has every cell):
+
+- With 64 sensors the deficit is confined to soft profiles with s <= 1 and w <= 2, on both
+  geometries, where the intervention networks are between 4.2 dB behind and 0.1 dB ahead.
+- The whole s = 0.5 column is weak, from -2.2 to +3.0 dB, including the widest structures.
+- Tikhonov scores highest on thin soft lines: 35.6 to 37.6 dB for w <= 2 with s of 1 or 1.5,
+  against 26.5 to 36.0 dB elsewhere.
+- With 16 sensors there is no deficit anywhere, and the width x edge interaction is large
+  (-8.47 dB): thinness costs sharp bars far more than soft lines.
+
+**Possible explanations, formed after the results and not tested:** additional sensors may benefit
+the classical inversion disproportionately on narrow ridges; the learned data-consistency weights
+may play a part; and the edges of this test set are sampled from an analytic profile, whereas the
+training edges are Gaussian-filtered pixel masks, which may contribute to H2 not being reproduced.
+
+**Limitations.** Width and edge profile are not orthogonal near one pixel: the primary H1 contrast
+compares a Gaussian ridge with a flat-topped bar, which differ in slope and shape as well as in
+width. In the region where the two parameters are separable (w >= 4, s <= 1) the width effect that
+can be read off is smaller, A(6, 1) - A(4, 1) = +3.1 dB. H2 was not reproduced with 64 sensors. The
+classification is sensitive to the image set: on the 41 images without lines shorter than 6 pixels
+the geometry effect becomes negligible and the same rule returns "thinness-dominated", with every
+H1, H2 and H4 verdict unchanged. Thinness has not been shown to be the only cause.
+
+Further figures: `report/thin_structure_width_response.png`,
+`report/thin_structure_edge_response.png`, `report/thin_structure_geometry.png` and
+`report/thin_structure_results.png`, all drawn from `report/thin_structure_results.json`
+(`scripts/plot_thin_structure_results.py`). SHA-256 values of the result files are in
+`report/thin_structure_results.sha256`.
+
 ## Key Findings
 
 - On 400 test images, a U-Net refinement improves on amplitude-calibrated time-reversal by 4.9 dB
@@ -603,6 +703,11 @@ general.
   sharpness placed in the training set by replacement, the dip disappears at a cost of about 1 dB on
   sharp shapes, and thin vessels improve although none was trained on. A learned prior can be
   diagnosed with controlled shifts and repaired where the gap is identified, but only there.
+- A pre-registered diagnostic on existing networks shows that the failure left after that repair
+  follows thin soft structures and not curvature: at a fixed edge width the advantage over Tikhonov
+  is 10.5 dB lower on the thinnest line than on a line 6 pixels wide with 64 sensors, and curved
+  lines are not worse than straight ones. Which of thinness and edge profile dominates is
+  unresolved, and with 16 sensors the failure does not occur.
 - Everything here is synthetic (five phantom families, two sensor counts, one simulator); it
   characterises this setup, not photoacoustic reconstruction in general.
 
@@ -671,6 +776,7 @@ photoacoustic-reconstruction/
 │   ├── edge_gap_intervention.py  networks trained with edges of intermediate sharpness, against pre-set success criteria
 │   ├── checkpoint_manifest.py    hashes and provenance of the intervention's ten checkpoints; verifies a restored copy
 │   ├── thin_structure_study.py   existing networks on a width x edge-profile x geometry test set (report/thin_structure_preregistration.md)
+│   ├── plot_thin_structure_results.py  figures and a flat table from the thin-structure results
 │   ├── evaluate_mvp.py           original 8-image PSNR/SSIM comparison
 │   ├── plot_comparison_shared_scale.py  comparison figure on a common display range
 │   ├── evaluate_calibrated_baseline.py  amplitude-calibrated time-reversal baseline
@@ -744,6 +850,14 @@ python scripts/prior_shift_analysis.py
 # edge-sharpness intervention: 5 networks and their evaluation (after prior_shift_analysis.py;
 # about 2 hours on CPU; --train-seeds 0,1,2 trains a subset so that two processes can share the work)
 python scripts/edge_gap_intervention.py
+
+# check the ten checkpoints of the intervention against their recorded hashes
+python scripts/checkpoint_manifest.py --verify
+
+# thin-structure diagnostic of the existing networks (about 20 minutes; runs once, on the committed
+# design, and does not overwrite its results), then its figures and table
+python scripts/thin_structure_study.py
+python scripts/plot_thin_structure_results.py
 ```
 
 ## Reproducing the Experiments
@@ -822,6 +936,10 @@ helper).
 - The intervention was evaluated on 20 images per sweep point, at one replacement fraction and one
   blur range, and with 5 networks per arm that were still improving at their last epochs. It tests
   one explanation on one training set; other gaps in the prior may exist that no sweep here probes.
+- The thin-structure diagnostic changes the test images, not the training set: it shows which
+  properties of an image the existing networks fail on, not what change to training would repair
+  them. Its width and edge parameters are not separable near one pixel, its positive control for
+  the edge profile was not reproduced with 64 sensors, and it covers one noise level.
 - All experiments run on laptop CPU (and MPS for the original network).
 
 ## References
