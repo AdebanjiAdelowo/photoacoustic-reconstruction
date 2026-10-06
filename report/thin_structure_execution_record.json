@@ -1,0 +1,20 @@
+{
+  "purpose": "Execution history of the thin-structure study (scripts/thin_structure_study.py) before its results. An entry here is an execution failure, not an experimental replicate.",
+  "preregistration_commit": "1a2d0d64da1eebfe43faab53730f1fbb93f20ed2",
+  "attempts_before_any_result": [
+    {
+      "started_utc": "2026-10-06T20:57:13Z",
+      "ended_utc": "2026-10-06T20:57:55Z",
+      "executed_at_commit": "1a2d0d64da1eebfe43faab53730f1fbb93f20ed2",
+      "failed_at": "first cell (straight, core width 0, edge sigma 0.5), first sensor count (16), in the Tikhonov reconstruction",
+      "exception": "ValueError: need at least one array to stack (numpy.stack, called in scripts/mixed_phantom_experiment.py tikhonov, from the reconstruct function of scripts/thin_structure_study.py)",
+      "cause": "mixed_phantom_experiment.tikhonov loops over both sensor counts and stacks the recordings of each. The study passes one sensor count at a time, so that both counts see the same phantoms, and the other count's selection was empty. The tests of the plumbing used a stand-in reconstruction and never called the real helper with such a batch.",
+      "metrics_calculated": false,
+      "result_files_created": false,
+      "scientific_output_inspected": false,
+      "in_memory_state": "The ten networks had reconstructed the 50 images of that cell at 16 sensors. The arrays were never scored, saved or examined and were discarded when the process ended.",
+      "checkpoints_after_failure": "all ten matched report/checkpoint_manifest.json",
+      "correction": "The commit that adds this record replaces the helper call by a direct call to the same solver for one sensor count (tikhonov_reconstruct): same solver object, same weight, same float32 output, bit-for-bit equal to the helper on a batch with both counts (tests/test_thin_structure_study.py). The configuration, the pre-registration document, the phantom generator and every analysis function are unchanged, which the script verifies against the pre-registration commit before it runs. The results record that commit as execution_commit."
+    }
+  ]
+}

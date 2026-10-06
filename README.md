@@ -678,7 +678,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml, thin_structure_study.json
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    161 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
+├── tests/                    166 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
 └── report/                   evaluation figures and results
 ```
 
@@ -764,7 +764,7 @@ already exist (from `train.py`) but does not retrain it; it writes
 pytest
 ```
 
-161 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+166 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -783,9 +783,10 @@ families (value range, reproducibility, placement inside the sensor circle) and 
 statistics and the distance measure, and 4 cover the intervention (that only edge sharpness differs
 from the control training set, and the verdict logic). 5 cover the checkpoint manifest (detection of
 missing or altered files, agreement with the committed results), 9 the line phantoms with separate
-core and edge width, and 26 the thin-structure study before its evaluation (the locked design, the
-shared test images, reproducible noise, the verdict logic on invented scores, and the refusal to run
-on an uncommitted design).
+core and edge width, and 31 the thin-structure study before its evaluation (the locked design, the
+shared test images, reproducible noise, the verdict logic on invented scores, the refusal to run
+on an uncommitted design, and the Tikhonov call for a single sensor count against the established
+helper).
 
 ## Limitations
 

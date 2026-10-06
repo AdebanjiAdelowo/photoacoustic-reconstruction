@@ -156,7 +156,7 @@ def test_result_schema_records_every_factor_and_both_absolute_and_relative_quali
 def test_report_files_can_be_written_from_the_results(tmp_path):
     config = small_config()
     per_image = T.evaluate(config, *stand_in(config)[:2])
-    results = {"preregistration": config["preregistration"], "design_commit": "0" * 40,
+    results = {"preregistration": config["preregistration"], "preregistration_commit": "1" * 40, "execution_commit": "0" * 40,
                "cells": T.summarise(per_image, config), "hypotheses": T.evaluate_hypotheses(per_image, config)}
     T.write_text(results, tmp_path / "results.txt")
     T.plot(results, config, tmp_path / "results.png")
@@ -172,7 +172,7 @@ def test_script_cannot_train_or_overwrite():
     source = inspect.getsource(T)
     for forbidden in (".train(", "optim", ".backward(", "torch.save", "overwrite=True", "edgefill_split", "mixed_split"):
         assert forbidden not in source, forbidden
-    assert "require_locked(config)" in inspect.getsource(T.main)
+    assert "require_locked(config)" in inspect.getsource(T.main) and "require_preregistered_science()" in inspect.getsource(T.main)
 
 
 def test_generating_and_scoring_the_test_set_writes_nothing(tmp_path, monkeypatch):
@@ -219,6 +219,97 @@ def test_evaluation_refuses_an_uncommitted_or_modified_design(tmp_path):
     (tmp_path / "design.json").write_text("changed after the commit\n")
     with pytest.raises(T.NotLockedError, match="differs from the commit"):
         T.require_locked(config, tmp_path)
+
+
+# --------------------------------------------------------------------------- execution fix and provenance
+
+def _old_sweep_batch(solvers, n=6):
+    """Noisy recordings of images of the earlier disc sweep (not the study's test set), alternating
+    sensor counts, made with the forward matrices of `solvers`."""
+    import scripts.prior_shift_analysis as P
+    sweeps, n_sensors = P.sweep_images()
+    images, n_sensors = sweeps["disc_blur"][1.0][:n], n_sensors[:n]
+    rng = np.random.default_rng(0)
+    Y = []
+    for image, k in zip(images, n_sensors):
+        y = solvers[int(k)].A @ image.reshape(-1).astype(np.float64)
+        Y.append((y + 0.2 * np.sqrt(np.mean(y ** 2)) * rng.standard_normal(y.shape)).astype(np.float32))
+    return Y, n_sensors
+
+
+def _check_single_count_path(solvers):
+    import types
+    import scripts.mixed_phantom_experiment as M
+    setup = types.SimpleNamespace(physics=types.SimpleNamespace(solvers=solvers))
+    Y, n_sensors = _old_sweep_batch(solvers)
+    reference = M.tikhonov(setup, Y, n_sensors, lambda k: 0.01)                 # the established helper, both counts present
+    for k in (16, 64):
+        index = np.nonzero(n_sensors == k)[0]
+        single = [Y[i] for i in index]
+        ours = T.tikhonov_reconstruct(solvers[k], single, 0.01, 64)
+        assert ours.dtype == np.float32 and np.array_equal(ours, reference[index])   # bit for bit
+        with pytest.raises(ValueError, match="at least one array"):                 # the fault of the first attempt
+            M.tikhonov(setup, single, np.full(len(single), k, np.int32), lambda kk: 0.01)
+
+
+def test_single_sensor_count_tikhonov_equals_the_helper_with_the_real_solver_class():
+    from src.tikhonov import Tikhonov
+    rng = np.random.default_rng(1)
+    _check_single_count_path({k: Tikhonov(rng.standard_normal((3 * k, 64 * 64)) / 64) for k in (16, 64)})
+
+
+def test_single_sensor_count_tikhonov_equals_the_helper_with_the_real_forward_matrices():
+    from src.tikhonov import Tikhonov
+    paths = {k: os.path.join(ROOT, f"data/tikhonov_A_{k}.npy") for k in (16, 64)}
+    if not all(os.path.exists(p) for p in paths.values()):
+        pytest.skip("forward matrices are gitignored and not present")
+    _check_single_count_path({k: Tikhonov(np.load(p)) for k, p in paths.items()})
+
+
+def test_real_pipeline_runs_end_to_end_on_images_outside_the_test_set(tmp_path):
+    """The real forward model, networks and Tikhonov through every step of main, on two images per
+    cell drawn from the seeds of the earlier vessel sweep. Only completion is checked; no score of
+    this smoke run is read or kept."""
+    from scripts.checkpoint_manifest import CKPT_DIR, checkpoint_names
+    needed = [os.path.join(ROOT, CKPT_DIR, n) for n in checkpoint_names()] + [os.path.join(ROOT, f"data/tikhonov_A_{k}.npy") for k in (16, 64)]
+    if not all(os.path.exists(p) for p in needed):
+        pytest.skip("checkpoints and forward matrices are gitignored and not present")
+    config = copy.deepcopy(CONFIG)
+    config["test_set"]["seed_offset"], config["test_set"]["n_images"] = 400_000, 2
+    assert not set(T.image_seeds(config)) & set(T.image_seeds(CONFIG))
+    per_image = T.evaluate(config, *T.real_backends(config))
+    assert len(per_image) == len(T.cell_list(config)) * 2 * 11 * 2 and all(np.all(np.isfinite(v)) for v in per_image.values())
+    results = {"preregistration": config["preregistration"], "preregistration_commit": "1" * 40, "execution_commit": "0" * 40,
+               "cells": T.summarise(per_image, config), "hypotheses": T.evaluate_hypotheses(per_image, config),
+               "hypotheses_long_line_subset": T.evaluate_hypotheses(per_image, config, np.array([True, True]))}
+    json.dumps(results)
+    T.write_text(results, tmp_path / "smoke.txt")
+    T.plot(results, config, tmp_path / "smoke.png")
+    np.savez_compressed(tmp_path / "smoke.npz", image_seeds=np.array(T.image_seeds(config)), **per_image)
+
+
+def test_science_is_checked_against_the_preregistration_commit():
+    assert T.PREREGISTRATION_COMMIT == "1a2d0d64da1eebfe43faab53730f1fbb93f20ed2"
+    assert CONFIG_PATH_IS_SCIENTIFIC and {"evaluate_hypotheses", "classify", "contrast", "add_noise", "evaluate", "summarise"} <= set(T.ANALYSIS_FUNCTIONS)
+    if subprocess.run(["git", "cat-file", "-e", T.PREREGISTRATION_COMMIT], cwd=ROOT, capture_output=True).returncode != 0:
+        pytest.skip("the pre-registration commit is not in this checkout")
+    if subprocess.run(["git", "diff", "--quiet", "HEAD", "--", *T.SCIENTIFIC_FILES], cwd=ROOT).returncode != 0:
+        pytest.skip("scientific files have uncommitted changes")
+    provenance = T.require_preregistered_science()
+    assert provenance["preregistration_commit"] == T.PREREGISTRATION_COMMIT
+    assert provenance["analysis_functions_identical_to_preregistration"] == list(T.ANALYSIS_FUNCTIONS)
+
+
+CONFIG_PATH_IS_SCIENTIFIC = T.CONFIG_PATH in T.SCIENTIFIC_FILES
+
+
+def test_execution_record_documents_the_failed_attempt_without_results():
+    with open(os.path.join(ROOT, T.EXECUTION_RECORD_PATH)) as f:
+        record = json.load(f)
+    attempt = record["attempts_before_any_result"][0]
+    assert record["preregistration_commit"] == T.PREREGISTRATION_COMMIT and attempt["executed_at_commit"] == T.PREREGISTRATION_COMMIT
+    assert attempt["metrics_calculated"] is False and attempt["result_files_created"] is False
+    assert attempt["scientific_output_inspected"] is False and "ValueError" in attempt["exception"]
 
 
 # --------------------------------------------------------------------------- verdict logic on invented scores

@@ -14,8 +14,17 @@ commit. It checks the checkpoints against report/checkpoint_manifest.json before
     python scripts/thin_structure_study.py
 
 Outputs (written once, never overwritten): the files listed under "outputs" in the configuration.
+
+Provenance. The scientific design was fixed at PREREGISTRATION_COMMIT. This script was corrected
+after that commit for an execution fault that occurred before any result existed
+(report/thin_structure_execution_record.json): the Tikhonov call could not handle a batch with a
+single sensor count. The results record both commits, and the run is refused unless the
+configuration, the pre-registration, the generator and every analysis function below are identical
+to their pre-registered versions.
 """
+import ast
 import hashlib
+import inspect
 import json
 import os
 import subprocess
@@ -33,6 +42,12 @@ from src.stats import bootstrap_mean_ci  # noqa: E402
 from src.thin_structures import line_parameters, line_phantom, profile_descriptors  # noqa: E402
 
 CONFIG_PATH = "configs/thin_structure_study.json"
+PREREGISTRATION_COMMIT = "1a2d0d64da1eebfe43faab53730f1fbb93f20ed2"
+SCIENTIFIC_FILES = ("configs/thin_structure_study.json", "report/thin_structure_preregistration.md", "src/thin_structures.py")
+ANALYSIS_FUNCTIONS = ("cell_list", "profile_key", "cell_key", "image_seeds", "test_phantoms", "long_line_mask", "add_noise",
+                      "network_names", "evaluate", "_values", "group_values", "advantage", "_ci", "summarise", "contrast",
+                      "_three_way", "evaluate_hypotheses", "classify")
+EXECUTION_RECORD_PATH = "report/thin_structure_execution_record.json"
 TIKHONOV = "tikhonov"
 METRICS = (("psnr", psnr), ("ssim", ssim))
 
@@ -357,6 +372,62 @@ def require_locked(config, root=ROOT):
     return git("rev-parse", "HEAD").stdout.strip()
 
 
+def require_preregistered_science(root=ROOT):
+    """Check that the science is that of PREREGISTRATION_COMMIT although this script was corrected
+    afterwards: the commit is an ancestor of HEAD, the scientific files are byte-identical to it, and
+    the source of every analysis function equals its pre-registered source. Raises otherwise."""
+    def git(*args):
+        return subprocess.run(["git", *args], cwd=root, capture_output=True, text=True)
+    if git("merge-base", "--is-ancestor", PREREGISTRATION_COMMIT, "HEAD").returncode != 0:
+        raise NotLockedError(f"the pre-registration commit {PREREGISTRATION_COMMIT} is not an ancestor of HEAD")
+    if git("diff", "--quiet", PREREGISTRATION_COMMIT, "HEAD", "--", *SCIENTIFIC_FILES).returncode != 0:
+        raise NotLockedError("a scientific file differs from the pre-registration commit")
+    old = git("show", f"{PREREGISTRATION_COMMIT}:scripts/thin_structure_study.py").stdout
+    registered = {node.name: ast.get_source_segment(old, node) for node in ast.parse(old).body if isinstance(node, ast.FunctionDef)}
+    module = sys.modules[__name__]
+    changed = [name for name in ANALYSIS_FUNCTIONS
+               if registered.get(name) is None or registered[name].strip() != inspect.getsource(getattr(module, name)).strip()]
+    if changed:
+        raise NotLockedError(f"analysis functions differ from the pre-registration commit: {', '.join(changed)}")
+    return {"preregistration_commit": PREREGISTRATION_COMMIT, "scientific_files_identical_to_preregistration": list(SCIENTIFIC_FILES),
+            "analysis_functions_identical_to_preregistration": list(ANALYSIS_FUNCTIONS)}
+
+
+def tikhonov_reconstruct(solver, Y, mu, grid_size):
+    """Tikhonov reconstructions, as float32 images, of recordings that all have the sensor count of
+    `solver`. The same solver call and output type as mixed_phantom_experiment.tikhonov, which
+    expects both sensor counts in a batch and fails when one is absent."""
+    out = np.zeros((len(Y), grid_size, grid_size), np.float32)
+    out[:] = solver.solve(np.stack(Y), mu).reshape(len(Y), grid_size, grid_size)
+    return out
+
+
+def real_backends(config):
+    """record and reconstruct of `evaluate` for the real forward model, the ten networks and Tikhonov."""
+    import scripts.mixed_phantom_experiment as M
+    import scripts.unrolled_evaluation as U
+
+    e = config["evaluation"]
+    with open("report/mixed_phantom_results.json") as f:
+        selected = json.load(f)["tikhonov_weights_selected_on_mixed160"]
+    mu = {int(k): v for k, v in e["tikhonov_mu"].items()}
+    assert all(selected[f"{e['noise_label']}|{k}"] == mu[k] for k in e["sensor_counts"]), "Tikhonov weights differ from their source"
+    assert dict(U.NOISE_LEVELS)[e["noise_label"]] == e["relative_noise_std"] and config["phantom"]["grid_size"] == U.GRID_SIZE
+
+    setup = M.Setup()
+    names = network_names(config, "control") + network_names(config, "intervention")
+    models = {n: U.load_model(f"{e['checkpoint_dir']}/{n}.pt", setup.device)[0] for n in names}
+
+    def record(phantoms, k):
+        return setup.recordings({"phantom": phantoms, "n_sensors": np.full(len(phantoms), k, np.int32)})
+
+    def reconstruct(Y, k):
+        out = U.reconstruct(models, setup.physics, Y, np.full(len(Y), k, np.int32))
+        out[TIKHONOV] = tikhonov_reconstruct(setup.physics.solvers[k], Y, mu[k], U.GRID_SIZE)
+        return out
+    return record, reconstruct
+
+
 def config_sha256(path=os.path.join(ROOT, CONFIG_PATH)):
     with open(path, "rb") as f:
         return hashlib.sha256(f.read()).hexdigest()
@@ -376,7 +447,8 @@ def write_text(results, path):
     """The report, in the pre-registered order of evidence: primary contrasts, interactions, the
     complete response surface, and last the summary classification."""
     L = ["Thin-structure diagnostic, phase 1 (scripts/thin_structure_study.py)",
-         f"Design: {results['preregistration']} at commit {results['design_commit']}",
+         f"Scientific pre-registration: {results['preregistration']} at commit {results['preregistration_commit']}",
+         f"Execution code: commit {results['execution_commit']} (a correction of the Tikhonov call; see {EXECUTION_RECORD_PATH})",
          "Advantage = PSNR of the mean of the five intervention networks minus PSNR of Tikhonov, 14 dB SNR; 95 % interval over images.",
          "", "== 1. Primary pre-registered contrasts"]
     for k, h in results["hypotheses"].items():
@@ -463,14 +535,13 @@ def main():
     os.chdir(ROOT)
     t0 = time.time()
     config = load_config()
-    design_commit = require_locked(config)
+    execution_commit = require_locked(config)
+    provenance = require_preregistered_science()
     for path in config["outputs"]:
         if os.path.exists(path):
             raise SystemExit(f"{path} exists: the pre-registered evaluation is run once and is not overwritten")
 
-    import scripts.mixed_phantom_experiment as M
-    import scripts.unrolled_evaluation as U
-    from scripts.checkpoint_manifest import verify
+    from scripts.checkpoint_manifest import current_environment, verify
 
     e = config["evaluation"]
     with open(e["checkpoint_manifest"]) as f:
@@ -478,39 +549,32 @@ def main():
     problems = verify(manifest, e["checkpoint_dir"])
     if problems:
         raise SystemExit("checkpoints do not match the manifest:\n  " + "\n  ".join(problems))
-    with open("report/mixed_phantom_results.json") as f:
-        selected = json.load(f)["tikhonov_weights_selected_on_mixed160"]
-    mu = {int(k): v for k, v in e["tikhonov_mu"].items()}
-    assert all(selected[f"{e['noise_label']}|{k}"] == mu[k] for k in e["sensor_counts"]), "Tikhonov weights differ from their source"
-    assert dict(U.NOISE_LEVELS)[e["noise_label"]] == e["relative_noise_std"] and config["phantom"]["grid_size"] == U.GRID_SIZE
-
-    setup = M.Setup()
-    names = network_names(config, "control") + network_names(config, "intervention")
-    models = {n: U.load_model(f"{e['checkpoint_dir']}/{n}.pt", setup.device)[0] for n in names}
-
-    def record(phantoms, k):
-        return setup.recordings({"phantom": phantoms, "n_sensors": np.full(len(phantoms), k, np.int32)})
-
-    def reconstruct(Y, k):
-        n_s = np.full(len(Y), k, np.int32)
-        out = U.reconstruct(models, setup.physics, Y, n_s)
-        out[TIKHONOV] = M.tikhonov(setup, Y, n_s, lambda kk: mu[int(kk)])
-        return out
-
+    record, reconstruct = real_backends(config)
     per_image = evaluate(config, record, reconstruct,
                          progress=lambda g, w, s: print(f"[{time.time() - t0:.0f}s] {cell_key(g, w, s)} done", flush=True))
     problems = verify(manifest, e["checkpoint_dir"])
     assert not problems, f"a checkpoint changed during the evaluation: {problems}"
 
     mask = long_line_mask(config)
-    results = {"study": config["study"], "preregistration": config["preregistration"], "design_commit": design_commit,
+    execution_record = None
+    if os.path.exists(EXECUTION_RECORD_PATH):
+        with open(EXECUTION_RECORD_PATH) as f:
+            execution_record = json.load(f)
+    results = {"study": config["study"], "preregistration": config["preregistration"],
+               **provenance, "execution_commit": execution_commit, "execution_record": execution_record,
                "config_sha256": config_sha256(), "config": config,
+               "environment_at_execution": current_environment(),
+               "checkpoint_sha256": {c["filename"]: c["sha256"] for c in manifest["checkpoints"]},
+               "completion": {"n_cells": len(cell_list(config)), "n_images_per_cell": config["test_set"]["n_images"],
+                              "sensor_counts": e["sensor_counts"], "n_score_arrays": len(per_image),
+                              "all_scores_finite": bool(all(np.all(np.isfinite(v)) for v in per_image.values()))},
                "image_seeds": image_seeds(config), "long_line_subset": mask.tolist(),
                "evidence_order": ["primary contrasts (P0, H1 to H4)", "interactions", "complete response surface (cells)",
                                   "summary_classification, which never overrides the items before it"],
                "cells": summarise(per_image, config),
                "hypotheses": evaluate_hypotheses(per_image, config),
                "hypotheses_long_line_subset": evaluate_hypotheses(per_image, config, mask)}
+    results["runtime_seconds"] = round(time.time() - t0, 1)
     out = config["outputs"]
     np.savez_compressed(out[2], image_seeds=np.array(image_seeds(config)), **per_image)   # the raw scores first
     with open(out[0], "w") as f:
