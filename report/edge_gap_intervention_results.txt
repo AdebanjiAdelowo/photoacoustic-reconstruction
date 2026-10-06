@@ -1,0 +1,176 @@
+Edge-sharpness intervention (scripts/edge_gap_intervention.py)
+
+Intervention: does filling the edge-sharpness gap in the training images repair the failure?
+
+Background. scripts/prior_shift_analysis.py found that the networks trained on four phantom families
+(mixed160) lose most of their advantage over Tikhonov on discs whose edges are blurred by 0.5 to 1
+pixel, and on thin vessels. The explanation offered there, after seeing the result, was that the
+training images have either one-pixel edges or smooth blob profiles and nothing in between. This
+experiment tests that explanation by changing the training distribution and nothing else.
+
+Design (written and committed before any network of this experiment was trained):
+
+  * Control: the 5 existing mixed160 networks (experiments/unrolled_mixed/mixed160_seed*.pt).
+  * Intervention ("edgefill160"): the same 160 training and 32 validation images, with the same
+    seeds, families, shapes, positions and sensor counts, except that half of the images of each
+    sharp-edged family (discs, ellipses, rectangles; balanced over both sensor counts) are replaced
+    by the same image with its edges blurred by a Gaussian whose standard deviation is drawn
+    uniformly from 0.25 to 1.5 pixels. Images are replaced, not added: 60 of the 160 training
+    images change, 60 sharp images and the 40 blob images stay as they are.
+  * Everything else is identical to mixed160: architecture, noise-augmented training recipe, Adam
+    1e-3, batch 8, 50 epochs, seeds 0 to 4, sensor geometry, checkpoint selection, CPU.
+  * Tikhonov is untouched (weights selected on the mixed160 training split).
+
+Evaluation, on existing test sets only, at 14 dB SNR unless stated (PSNR advantage over Tikhonov,
+mean of 5 networks, per sensor count):
+
+  Primary     the whole disc-blur sweep of prior_shift_analysis.py (0, 0.5, 1, 2, 3, 4 pixels; the
+              same 40 images and noise). The test discs are new images, and blur was introduced in
+              training for all three sharp families, not for discs alone.
+  Secondary   the vessel-width sweep (thin vessels are a transfer prediction, not a training target).
+  Cost        the shape test set and the blob test set of mixed_phantom_experiment.py.
+
+Prediction. Filling the gap reduces or removes the dip at 0.5 to 1 pixel of blur, and may improve
+thin vessels.
+
+Success criteria, fixed in advance, each evaluated at 16 and at 64 sensors:
+
+  S1 (valley)   the worst advantage over the blurs 0.5 and 1 pixel improves by at least 3 dB over
+                mixed160, and the paired improvement at 1 pixel has a 95 % interval above zero.
+                (The mixed160 valley is about 5 to 6 dB below its level at 2 pixels of blur, so
+                3 dB is more than half of it.)
+  S2 (no harm)  the loss relative to mixed160 is at most 2 dB on sharp discs (blur 0) and on each
+                sharp family of the shape test set, and at most 1 dB at blurs of 2, 3 and 4 pixels.
+  S3 (transfer) the advantage on the two thinnest vessels (widths 1 and 1.5 pixels) improves by at
+                least 1 dB on average.
+
+  Verdict: "supported" if S1 and S2 hold at both sensor counts; "partly supported" if S1 holds at
+  both but S2 fails, or S1 holds at one sensor count; "not supported" if S1 fails at both. An
+  improvement of less than 1 dB in the valley at both sensor counts counts as a refutation of the
+  edge-sharpness-gap explanation. S3 is reported separately and does not enter the verdict.
+
+Training set: 60 of 160 images replaced by blurred copies ({'blobs': 0, 'discs': 20, 'ellipses': 20, 'rectangles': 20}), mean blur 0.88 px
+Networks (best epoch, validation loss): mixed160_seed0 49 0.000236, edgefill160_seed0 49 0.000229, mixed160_seed1 49 0.000234, edgefill160_seed1 47 0.000248, mixed160_seed2 49 0.000236, edgefill160_seed2 47 0.000245, mixed160_seed3 49 0.000232, edgefill160_seed3 49 0.000245, mixed160_seed4 47 0.000241, edgefill160_seed4 49 0.000250
+Control check: largest difference of the mixed160 sweep values from prior_shift_analysis.py: 0.00e+00 dB
+
+== VERDICT: supported; edge-gap explanation refuted: False
+  16 sensors: S1 valley True (worst advantage at blur 0.5 to 1 px: mixed160 +2.71, edgefill160 +8.71, gain +6.00 dB; paired gain at 1 px +6.00 [+5.71, +6.28])
+              S2 no harm True (loss on sharp: disc_blur_0 +1.11, discs +1.10, ellipses +0.80, rectangles +0.45; loss on smooth: disc_blur_2 -1.02, disc_blur_3 -0.25, disc_blur_4 -0.16)
+              S3 transfer True (mean gain on vessel widths 1 and 1.5 px: +3.29 dB)
+  64 sensors: S1 valley True (worst advantage at blur 0.5 to 1 px: mixed160 +1.46, edgefill160 +7.04, gain +5.58 dB; paired gain at 1 px +5.63 [+5.41, +5.89])
+              S2 no harm True (loss on sharp: disc_blur_0 +0.89, discs +0.86, ellipses +0.73, rectangles +0.91; loss on smooth: disc_blur_2 -0.75, disc_blur_3 -0.34, disc_blur_4 -0.29)
+              S3 transfer True (mean gain on vessel widths 1 and 1.5 px: +3.92 dB)
+
+== Sweeps (20 images per row): PSNR advantage over Tikhonov, and intervention minus control
+  vessel_width 1, noise noiseless 16 sensors: Tikhonov 29.76 | mixed160 +0.93 [+0.71, +1.15] | edgefill160 +2.53 [+2.27, +2.80] | difference +1.60 [+1.48, +1.72]
+  vessel_width 1, noise noiseless 64 sensors: Tikhonov 62.08 | mixed160 -31.02 [-32.21, -29.85] | edgefill160 -28.97 [-30.23, -27.68] | difference +2.05 [+1.89, +2.24]
+  vessel_width 1, noise high      16 sensors: Tikhonov 28.08 | mixed160 +2.51 [+2.34, +2.65] | edgefill160 +4.04 [+3.81, +4.24] | difference +1.53 [+1.42, +1.63]
+  vessel_width 1, noise high      64 sensors: Tikhonov 36.94 | mixed160 -5.96 [-6.19, -5.71] | edgefill160 -3.96 [-4.29, -3.64] | difference +1.99 [+1.83, +2.17]
+  vessel_width 1.5, noise noiseless 16 sensors: Tikhonov 32.27 | mixed160 -1.32 [-1.73, -0.87] | edgefill160 +4.36 [+4.02, +4.73] | difference +5.68 [+5.39, +5.98]
+  vessel_width 1.5, noise noiseless 64 sensors: Tikhonov 69.76 | mixed160 -37.14 [-39.88, -34.60] | edgefill160 -30.43 [-33.11, -27.99] | difference +6.71 [+6.51, +6.90]
+  vessel_width 1.5, noise high      16 sensors: Tikhonov 29.12 | mixed160 +1.53 [+1.33, +1.73] | edgefill160 +6.59 [+6.31, +6.88] | difference +5.06 [+4.80, +5.33]
+  vessel_width 1.5, noise high      64 sensors: Tikhonov 36.29 | mixed160 -3.95 [-4.27, -3.61] | edgefill160 +1.89 [+1.65, +2.19] | difference +5.84 [+5.65, +6.02]
+  vessel_width 2, noise noiseless 16 sensors: Tikhonov 35.12 | mixed160 -0.47 [-1.02, +0.07] | edgefill160 +5.50 [+5.09, +5.94] | difference +5.98 [+5.53, +6.42]
+  vessel_width 2, noise noiseless 64 sensors: Tikhonov 71.57 | mixed160 -31.77 [-34.82, -28.97] | edgefill160 -27.45 [-30.51, -24.72] | difference +4.32 [+4.04, +4.55]
+  vessel_width 2, noise high      16 sensors: Tikhonov 30.03 | mixed160 +3.56 [+3.34, +3.80] | edgefill160 +8.22 [+7.95, +8.48] | difference +4.65 [+4.32, +4.97]
+  vessel_width 2, noise high      64 sensors: Tikhonov 34.77 | mixed160 +2.65 [+2.41, +2.91] | edgefill160 +5.92 [+5.79, +6.06] | difference +3.27 [+3.10, +3.45]
+  vessel_width 3, noise noiseless 16 sensors: Tikhonov 40.31 | mixed160 +2.13 [+1.69, +2.59] | edgefill160 +3.49 [+3.07, +3.93] | difference +1.36 [+1.21, +1.49]
+  vessel_width 3, noise noiseless 64 sensors: Tikhonov 73.28 | mixed160 -24.52 [-27.77, -21.69] | edgefill160 -24.51 [-27.72, -21.63] | difference +0.00 [-0.13, +0.13]
+  vessel_width 3, noise high      16 sensors: Tikhonov 30.51 | mixed160 +6.83 [+6.61, +7.05] | edgefill160 +7.84 [+7.67, +8.02] | difference +1.01 [+0.91, +1.11]
+  vessel_width 3, noise high      64 sensors: Tikhonov 32.47 | mixed160 +7.12 [+6.92, +7.31] | edgefill160 +7.90 [+7.77, +8.02] | difference +0.78 [+0.68, +0.87]
+  vessel_width 4, noise noiseless 16 sensors: Tikhonov 44.10 | mixed160 +0.56 [+0.13, +1.03] | edgefill160 +1.11 [+0.65, +1.60] | difference +0.55 [+0.48, +0.61]
+  vessel_width 4, noise noiseless 64 sensors: Tikhonov 73.98 | mixed160 -23.47 [-26.51, -20.78] | edgefill160 -23.39 [-26.39, -20.66] | difference +0.09 [-0.01, +0.19]
+  vessel_width 4, noise high      16 sensors: Tikhonov 29.82 | mixed160 +6.98 [+6.79, +7.17] | edgefill160 +7.29 [+7.12, +7.47] | difference +0.31 [+0.27, +0.36]
+  vessel_width 4, noise high      64 sensors: Tikhonov 30.81 | mixed160 +7.74 [+7.57, +7.91] | edgefill160 +8.21 [+8.07, +8.35] | difference +0.47 [+0.42, +0.52]
+  vessel_width 6, noise noiseless 16 sensors: Tikhonov 47.59 | mixed160 -3.21 [-3.85, -2.63] | edgefill160 -2.48 [-3.09, -1.91] | difference +0.73 [+0.63, +0.82]
+  vessel_width 6, noise noiseless 64 sensors: Tikhonov 74.19 | mixed160 -25.23 [-27.23, -23.36] | edgefill160 -24.65 [-26.64, -22.81] | difference +0.58 [+0.47, +0.68]
+  vessel_width 6, noise high      16 sensors: Tikhonov 27.86 | mixed160 +6.21 [+6.00, +6.42] | edgefill160 +6.31 [+6.11, +6.52] | difference +0.10 [+0.07, +0.13]
+  vessel_width 6, noise high      64 sensors: Tikhonov 28.37 | mixed160 +7.65 [+7.47, +7.83] | edgefill160 +7.97 [+7.80, +8.15] | difference +0.33 [+0.31, +0.35]
+  disc_blur 0, noise noiseless 16 sensors: Tikhonov 26.23 | mixed160 +15.21 [+13.25, +16.99] | edgefill160 +13.43 [+11.61, +15.15] | difference -1.78 [-2.36, -1.17]
+  disc_blur 0, noise noiseless 64 sensors: Tikhonov 37.23 | mixed160 +8.74 [+7.34, +10.06] | edgefill160 +6.96 [+5.51, +8.25] | difference -1.77 [-2.08, -1.47]
+  disc_blur 0, noise high      16 sensors: Tikhonov 23.92 | mixed160 +12.68 [+11.52, +13.73] | edgefill160 +11.56 [+10.44, +12.62] | difference -1.11 [-1.39, -0.81]
+  disc_blur 0, noise high      64 sensors: Tikhonov 27.15 | mixed160 +13.01 [+12.39, +13.59] | edgefill160 +12.12 [+11.33, +12.82] | difference -0.89 [-1.12, -0.70]
+  disc_blur 0.5, noise noiseless 16 sensors: Tikhonov 28.83 | mixed160 +6.13 [+5.74, +6.45] | edgefill160 +9.71 [+9.07, +10.26] | difference +3.57 [+3.26, +3.89]
+  disc_blur 0.5, noise noiseless 64 sensors: Tikhonov 44.06 | mixed160 -8.45 [-8.84, -8.12] | edgefill160 -4.58 [-4.94, -4.27] | difference +3.87 [+3.72, +4.01]
+  disc_blur 0.5, noise high      16 sensors: Tikhonov 25.99 | mixed160 +7.71 [+7.38, +8.02] | edgefill160 +9.64 [+9.16, +10.11] | difference +1.92 [+1.70, +2.13]
+  disc_blur 0.5, noise high      64 sensors: Tikhonov 30.21 | mixed160 +4.56 [+4.38, +4.75] | edgefill160 +7.04 [+6.81, +7.24] | difference +2.47 [+2.32, +2.63]
+  disc_blur 1, noise noiseless 16 sensors: Tikhonov 34.69 | mixed160 -1.59 [-2.01, -1.17] | edgefill160 +8.90 [+8.53, +9.30] | difference +10.49 [+10.30, +10.69]
+  disc_blur 1, noise noiseless 64 sensors: Tikhonov 75.76 | mixed160 -39.42 [-39.74, -39.09] | edgefill160 -28.45 [-28.78, -28.13] | difference +10.98 [+10.72, +11.23]
+  disc_blur 1, noise high      16 sensors: Tikhonov 29.21 | mixed160 +2.71 [+2.37, +3.05] | edgefill160 +8.71 [+8.35, +9.05] | difference +6.00 [+5.71, +6.28]
+  disc_blur 1, noise high      64 sensors: Tikhonov 33.07 | mixed160 +1.46 [+1.17, +1.75] | edgefill160 +7.09 [+6.94, +7.24] | difference +5.63 [+5.41, +5.89]
+  disc_blur 2, noise noiseless 16 sensors: Tikhonov 43.96 | mixed160 +2.09 [+1.44, +2.82] | edgefill160 +3.70 [+3.03, +4.42] | difference +1.61 [+1.45, +1.76]
+  disc_blur 2, noise noiseless 64 sensors: Tikhonov 87.79 | mixed160 -35.96 [-36.68, -35.30] | edgefill160 -35.26 [-36.02, -34.57] | difference +0.69 [+0.62, +0.76]
+  disc_blur 2, noise high      16 sensors: Tikhonov 31.81 | mixed160 +7.14 [+6.84, +7.43] | edgefill160 +8.16 [+7.91, +8.41] | difference +1.02 [+0.92, +1.12]
+  disc_blur 2, noise high      64 sensors: Tikhonov 33.53 | mixed160 +7.64 [+7.50, +7.77] | edgefill160 +8.39 [+8.27, +8.50] | difference +0.75 [+0.70, +0.80]
+  disc_blur 3, noise noiseless 16 sensors: Tikhonov 49.67 | mixed160 -2.11 [-2.84, -1.35] | edgefill160 -1.81 [-2.55, -1.06] | difference +0.30 [+0.22, +0.39]
+  disc_blur 3, noise noiseless 64 sensors: Tikhonov 87.34 | mixed160 -34.31 [-34.73, -33.87] | edgefill160 -34.04 [-34.46, -33.57] | difference +0.27 [+0.19, +0.34]
+  disc_blur 3, noise high      16 sensors: Tikhonov 31.97 | mixed160 +7.20 [+7.00, +7.40] | edgefill160 +7.45 [+7.27, +7.63] | difference +0.25 [+0.20, +0.31]
+  disc_blur 3, noise high      64 sensors: Tikhonov 33.27 | mixed160 +8.20 [+8.07, +8.31] | edgefill160 +8.54 [+8.44, +8.63] | difference +0.34 [+0.30, +0.38]
+  disc_blur 4, noise noiseless 16 sensors: Tikhonov 52.30 | mixed160 -5.33 [-5.87, -4.77] | edgefill160 -4.86 [-5.41, -4.29] | difference +0.47 [+0.40, +0.53]
+  disc_blur 4, noise noiseless 64 sensors: Tikhonov 86.67 | mixed160 -34.20 [-34.52, -33.87] | edgefill160 -33.81 [-34.16, -33.45] | difference +0.39 [+0.32, +0.46]
+  disc_blur 4, noise high      16 sensors: Tikhonov 31.29 | mixed160 +6.86 [+6.66, +7.05] | edgefill160 +7.02 [+6.82, +7.20] | difference +0.16 [+0.11, +0.21]
+  disc_blur 4, noise high      64 sensors: Tikhonov 32.44 | mixed160 +8.22 [+8.09, +8.33] | edgefill160 +8.51 [+8.40, +8.60] | difference +0.29 [+0.25, +0.32]
+
+== Shape test set (50 images per row), PSNR advantage over Tikhonov
+  blobs      noise noiseless 16 sensors: mixed160 +1.29 | edgefill160 +2.95 | difference +1.66 [+1.20, +2.17]
+  blobs      noise noiseless 64 sensors: mixed160 -39.02 | edgefill160 -38.59 | difference +0.44 [+0.15, +0.75]
+  discs      noise noiseless 16 sensors: mixed160 +15.91 | edgefill160 +13.89 | difference -2.02 [-2.32, -1.72]
+  discs      noise noiseless 64 sensors: mixed160 +9.33 | edgefill160 +7.47 | difference -1.86 [-2.15, -1.59]
+  ellipses   noise noiseless 16 sensors: mixed160 +16.18 | edgefill160 +14.80 | difference -1.38 [-1.65, -1.12]
+  ellipses   noise noiseless 64 sensors: mixed160 +10.00 | edgefill160 +8.29 | difference -1.72 [-1.97, -1.49]
+  rectangles noise noiseless 16 sensors: mixed160 +12.55 | edgefill160 +11.69 | difference -0.86 [-1.08, -0.62]
+  rectangles noise noiseless 64 sensors: mixed160 +8.32 | edgefill160 +6.51 | difference -1.81 [-2.06, -1.56]
+  vessels    noise noiseless 16 sensors: mixed160 -0.61 | edgefill160 +4.08 | difference +4.69 [+4.19, +5.20]
+  vessels    noise noiseless 64 sensors: mixed160 -33.16 | edgefill160 -28.06 | difference +5.10 [+4.63, +5.55]
+  blobs      noise low       16 sensors: mixed160 +5.73 | edgefill160 +7.39 | difference +1.66 [+1.20, +2.17]
+  blobs      noise low       64 sensors: mixed160 -0.39 | edgefill160 +0.05 | difference +0.44 [+0.16, +0.75]
+  discs      noise low       16 sensors: mixed160 +16.89 | edgefill160 +14.88 | difference -2.01 [-2.31, -1.70]
+  discs      noise low       64 sensors: mixed160 +16.09 | edgefill160 +14.24 | difference -1.85 [-2.14, -1.58]
+  ellipses   noise low       16 sensors: mixed160 +17.13 | edgefill160 +15.76 | difference -1.37 [-1.64, -1.11]
+  ellipses   noise low       64 sensors: mixed160 +17.03 | edgefill160 +15.32 | difference -1.71 [-1.95, -1.48]
+  rectangles noise low       16 sensors: mixed160 +13.50 | edgefill160 +12.65 | difference -0.85 [-1.07, -0.60]
+  rectangles noise low       64 sensors: mixed160 +15.33 | edgefill160 +13.54 | difference -1.79 [-2.05, -1.55]
+  vessels    noise low       16 sensors: mixed160 +0.33 | edgefill160 +5.02 | difference +4.69 [+4.18, +5.19]
+  vessels    noise low       64 sensors: mixed160 -16.03 | edgefill160 -10.93 | difference +5.10 [+4.63, +5.55]
+  blobs      noise moderate  16 sensors: mixed160 +8.34 | edgefill160 +9.93 | difference +1.59 [+1.13, +2.08]
+  blobs      noise moderate  64 sensors: mixed160 +6.10 | edgefill160 +6.56 | difference +0.46 [+0.21, +0.73]
+  discs      noise moderate  16 sensors: mixed160 +16.80 | edgefill160 +14.91 | difference -1.89 [-2.17, -1.60]
+  discs      noise moderate  64 sensors: mixed160 +17.16 | edgefill160 +15.49 | difference -1.67 [-1.94, -1.43]
+  ellipses   noise moderate  16 sensors: mixed160 +17.26 | edgefill160 +15.89 | difference -1.37 [-1.62, -1.10]
+  ellipses   noise moderate  64 sensors: mixed160 +18.12 | edgefill160 +16.61 | difference -1.52 [-1.74, -1.31]
+  rectangles noise moderate  16 sensors: mixed160 +13.60 | edgefill160 +12.84 | difference -0.76 [-0.97, -0.53]
+  rectangles noise moderate  64 sensors: mixed160 +16.59 | edgefill160 +14.95 | difference -1.65 [-1.88, -1.42]
+  vessels    noise moderate  16 sensors: mixed160 +1.16 | edgefill160 +5.78 | difference +4.63 [+4.13, +5.13]
+  vessels    noise moderate  64 sensors: mixed160 -8.60 | edgefill160 -3.56 | difference +5.04 [+4.58, +5.49]
+  blobs      noise high      16 sensors: mixed160 +7.55 | edgefill160 +8.69 | difference +1.13 [+0.78, +1.52]
+  blobs      noise high      64 sensors: mixed160 +7.51 | edgefill160 +7.98 | difference +0.48 [+0.36, +0.62]
+  discs      noise high      16 sensors: mixed160 +13.14 | edgefill160 +12.04 | difference -1.10 [-1.28, -0.93]
+  discs      noise high      64 sensors: mixed160 +13.00 | edgefill160 +12.13 | difference -0.86 [-1.01, -0.73]
+  ellipses   noise high      16 sensors: mixed160 +13.86 | edgefill160 +13.06 | difference -0.80 [-0.96, -0.64]
+  ellipses   noise high      64 sensors: mixed160 +13.92 | edgefill160 +13.19 | difference -0.73 [-0.85, -0.61]
+  rectangles noise high      16 sensors: mixed160 +11.73 | edgefill160 +11.28 | difference -0.45 [-0.64, -0.26]
+  rectangles noise high      64 sensors: mixed160 +13.09 | edgefill160 +12.18 | difference -0.91 [-1.06, -0.78]
+  vessels    noise high      16 sensors: mixed160 +2.29 | edgefill160 +6.40 | difference +4.11 [+3.71, +4.53]
+  vessels    noise high      64 sensors: mixed160 -3.22 | edgefill160 +1.18 | difference +4.40 [+4.02, +4.76]
+  blobs      noise severe    16 sensors: mixed160 +6.66 | edgefill160 +7.53 | difference +0.87 [+0.69, +1.07]
+  blobs      noise severe    64 sensors: mixed160 +6.20 | edgefill160 +6.75 | difference +0.56 [+0.48, +0.64]
+  discs      noise severe    16 sensors: mixed160 +7.57 | edgefill160 +7.33 | difference -0.24 [-0.35, -0.15]
+  discs      noise severe    64 sensors: mixed160 +9.27 | edgefill160 +8.87 | difference -0.40 [-0.47, -0.33]
+  ellipses   noise severe    16 sensors: mixed160 +8.98 | edgefill160 +8.61 | difference -0.36 [-0.46, -0.27]
+  ellipses   noise severe    64 sensors: mixed160 +10.48 | edgefill160 +10.05 | difference -0.44 [-0.49, -0.38]
+  rectangles noise severe    16 sensors: mixed160 +7.84 | edgefill160 +7.66 | difference -0.18 [-0.31, -0.04]
+  rectangles noise severe    64 sensors: mixed160 +9.73 | edgefill160 +9.31 | difference -0.42 [-0.49, -0.35]
+  vessels    noise severe    16 sensors: mixed160 +3.50 | edgefill160 +6.09 | difference +2.58 [+2.37, +2.81]
+  vessels    noise severe    64 sensors: mixed160 +2.05 | edgefill160 +5.01 | difference +2.96 [+2.74, +3.18]
+
+== Blob test set (200 images per row), PSNR
+  noise noiseless 16 sensors: Tikhonov 43.56 | mixed160 45.35 | edgefill160 47.23 | difference +1.88 [+1.64, +2.12]
+  noise noiseless 64 sensors: Tikhonov 90.51 | mixed160 51.60 | edgefill160 52.17 | difference +0.58 [+0.42, +0.75]
+  noise low       16 sensors: Tikhonov 39.79 | mixed160 45.33 | edgefill160 47.21 | difference +1.88 [+1.64, +2.11]
+  noise low       64 sensors: Tikhonov 51.78 | mixed160 51.53 | edgefill160 52.10 | difference +0.58 [+0.42, +0.75]
+  noise moderate  16 sensors: Tikhonov 36.71 | mixed160 44.85 | edgefill160 46.65 | difference +1.80 [+1.56, +2.03]
+  noise moderate  64 sensors: Tikhonov 44.06 | mixed160 50.24 | edgefill160 50.82 | difference +0.58 [+0.44, +0.73]
+  noise high      16 sensors: Tikhonov 33.55 | mixed160 41.14 | edgefill160 42.39 | difference +1.25 [+1.07, +1.44]
+  noise high      64 sensors: Tikhonov 36.27 | mixed160 43.73 | edgefill160 44.29 | difference +0.56 [+0.48, +0.64]
+  noise severe    16 sensors: Tikhonov 28.38 | mixed160 35.08 | edgefill160 35.97 | difference +0.89 [+0.80, +0.99]
+  noise severe    64 sensors: Tikhonov 30.53 | mixed160 36.59 | edgefill160 37.17 | difference +0.58 [+0.54, +0.61]

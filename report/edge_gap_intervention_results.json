@@ -1,0 +1,3029 @@
+{
+  "protocol": "Intervention: does filling the edge-sharpness gap in the training images repair the failure?\n\nBackground. scripts/prior_shift_analysis.py found that the networks trained on four phantom families\n(mixed160) lose most of their advantage over Tikhonov on discs whose edges are blurred by 0.5 to 1\npixel, and on thin vessels. The explanation offered there, after seeing the result, was that the\ntraining images have either one-pixel edges or smooth blob profiles and nothing in between. This\nexperiment tests that explanation by changing the training distribution and nothing else.\n\nDesign (written and committed before any network of this experiment was trained):\n\n  * Control: the 5 existing mixed160 networks (experiments/unrolled_mixed/mixed160_seed*.pt).\n  * Intervention (\"edgefill160\"): the same 160 training and 32 validation images, with the same\n    seeds, families, shapes, positions and sensor counts, except that half of the images of each\n    sharp-edged family (discs, ellipses, rectangles; balanced over both sensor counts) are replaced\n    by the same image with its edges blurred by a Gaussian whose standard deviation is drawn\n    uniformly from 0.25 to 1.5 pixels. Images are replaced, not added: 60 of the 160 training\n    images change, 60 sharp images and the 40 blob images stay as they are.\n  * Everything else is identical to mixed160: architecture, noise-augmented training recipe, Adam\n    1e-3, batch 8, 50 epochs, seeds 0 to 4, sensor geometry, checkpoint selection, CPU.\n  * Tikhonov is untouched (weights selected on the mixed160 training split).\n\nEvaluation, on existing test sets only, at 14 dB SNR unless stated (PSNR advantage over Tikhonov,\nmean of 5 networks, per sensor count):\n\n  Primary     the whole disc-blur sweep of prior_shift_analysis.py (0, 0.5, 1, 2, 3, 4 pixels; the\n              same 40 images and noise). The test discs are new images, and blur was introduced in\n              training for all three sharp families, not for discs alone.\n  Secondary   the vessel-width sweep (thin vessels are a transfer prediction, not a training target).\n  Cost        the shape test set and the blob test set of mixed_phantom_experiment.py.\n\nPrediction. Filling the gap reduces or removes the dip at 0.5 to 1 pixel of blur, and may improve\nthin vessels.\n\nSuccess criteria, fixed in advance, each evaluated at 16 and at 64 sensors:\n\n  S1 (valley)   the worst advantage over the blurs 0.5 and 1 pixel improves by at least 3 dB over\n                mixed160, and the paired improvement at 1 pixel has a 95 % interval above zero.\n                (The mixed160 valley is about 5 to 6 dB below its level at 2 pixels of blur, so\n                3 dB is more than half of it.)\n  S2 (no harm)  the loss relative to mixed160 is at most 2 dB on sharp discs (blur 0) and on each\n                sharp family of the shape test set, and at most 1 dB at blurs of 2, 3 and 4 pixels.\n  S3 (transfer) the advantage on the two thinnest vessels (widths 1 and 1.5 pixels) improves by at\n                least 1 dB on average.\n\n  Verdict: \"supported\" if S1 and S2 hold at both sensor counts; \"partly supported\" if S1 holds at\n  both but S2 fails, or S1 holds at one sensor count; \"not supported\" if S1 fails at both. An\n  improvement of less than 1 dB in the valley at both sensor counts counts as a refutation of the\n  edge-sharpness-gap explanation. S3 is reported separately and does not enter the verdict.",
+  "networks": {
+    "mixed160_seed0": {
+      "epoch": 49,
+      "val_loss": 0.00023632892407476902
+    },
+    "edgefill160_seed0": {
+      "epoch": 49,
+      "val_loss": 0.0002288233081344515
+    },
+    "mixed160_seed1": {
+      "epoch": 49,
+      "val_loss": 0.00023350396077148616
+    },
+    "edgefill160_seed1": {
+      "epoch": 47,
+      "val_loss": 0.0002480846887920052
+    },
+    "mixed160_seed2": {
+      "epoch": 49,
+      "val_loss": 0.0002356814220547676
+    },
+    "edgefill160_seed2": {
+      "epoch": 47,
+      "val_loss": 0.00024470267817378044
+    },
+    "mixed160_seed3": {
+      "epoch": 49,
+      "val_loss": 0.00023224744654726237
+    },
+    "edgefill160_seed3": {
+      "epoch": 49,
+      "val_loss": 0.0002450573374517262
+    },
+    "mixed160_seed4": {
+      "epoch": 47,
+      "val_loss": 0.00024106004275381565
+    },
+    "edgefill160_seed4": {
+      "epoch": 49,
+      "val_loss": 0.0002497716632205993
+    }
+  },
+  "training_set": {
+    "n_images": 160,
+    "n_replaced": 60,
+    "replaced_by_family": {
+      "blobs": 0,
+      "discs": 20,
+      "ellipses": 20,
+      "rectangles": 20
+    },
+    "blur_range_px": [
+      0.25,
+      1.5
+    ],
+    "blur_mean_px": 0.8754771548151628
+  },
+  "sweeps": [
+    {
+      "sweep": "vessel_width",
+      "value": 1.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 29.763956310704618,
+      "mixed160": {
+        "psnr": 30.69691144935239,
+        "minus_tikhonov": [
+          0.9329551386477701,
+          0.7143463081093747,
+          1.1501084613744614
+        ]
+      },
+      "edgefill160": {
+        "psnr": 32.2984466099748,
+        "minus_tikhonov": [
+          2.534490299270174,
+          2.26849467944749,
+          2.8021184842360385
+        ]
+      },
+      "intervention_minus_control": [
+        1.6015351606224038,
+        1.480879029780619,
+        1.7158324320052838
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 1.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 62.07535646042159,
+      "mixed160": {
+        "psnr": 31.057051359852608,
+        "minus_tikhonov": [
+          -31.018305100568977,
+          -32.20563976518888,
+          -29.85385729112109
+        ]
+      },
+      "edgefill160": {
+        "psnr": 33.109661342696015,
+        "minus_tikhonov": [
+          -28.965695117725566,
+          -30.22795265965083,
+          -27.677104524306323
+        ]
+      },
+      "intervention_minus_control": [
+        2.052609982843415,
+        1.8892394609810925,
+        2.2353841034365836
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 1.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 28.07756418039282,
+      "mixed160": {
+        "psnr": 30.584227936016248,
+        "minus_tikhonov": [
+          2.506663755623431,
+          2.336289717203543,
+          2.6533913855132956
+        ]
+      },
+      "edgefill160": {
+        "psnr": 32.11520480981048,
+        "minus_tikhonov": [
+          4.037640629417657,
+          3.807795253075338,
+          4.236033998971952
+        ]
+      },
+      "intervention_minus_control": [
+        1.5309768737942269,
+        1.420558425646069,
+        1.6335158747266172
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 1.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 36.93505509287962,
+      "mixed160": {
+        "psnr": 30.977658344897627,
+        "minus_tikhonov": [
+          -5.957396747981998,
+          -6.1923737855605445,
+          -5.713244284189744
+        ]
+      },
+      "edgefill160": {
+        "psnr": 32.97131794774178,
+        "minus_tikhonov": [
+          -3.963737145137847,
+          -4.292095379505023,
+          -3.6365312589413223
+        ]
+      },
+      "intervention_minus_control": [
+        1.9936596028441513,
+        1.8286333841225382,
+        2.1736301535074753
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 1.5,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 32.27374857165036,
+      "mixed160": {
+        "psnr": 30.952755005378783,
+        "minus_tikhonov": [
+          -1.3209935662715633,
+          -1.7293823420435654,
+          -0.8689924613039645
+        ]
+      },
+      "edgefill160": {
+        "psnr": 36.63279542698638,
+        "minus_tikhonov": [
+          4.35904685533603,
+          4.023773781733186,
+          4.732611744721562
+        ]
+      },
+      "intervention_minus_control": [
+        5.680040421607595,
+        5.392242756694076,
+        5.979756465572295
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 1.5,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 69.75977876603248,
+      "mixed160": {
+        "psnr": 32.6235696222026,
+        "minus_tikhonov": [
+          -37.13620914382987,
+          -39.88179015676773,
+          -34.60464240462296
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.32877103810226,
+        "minus_tikhonov": [
+          -30.431007727930215,
+          -33.10675267658031,
+          -27.9861948435527
+        ]
+      },
+      "intervention_minus_control": [
+        6.70520141589965,
+        6.505611433013457,
+        6.9021856488340765
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 1.5,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 29.120205508015903,
+      "mixed160": {
+        "psnr": 30.650603860815046,
+        "minus_tikhonov": [
+          1.530398352799141,
+          1.3316245846410726,
+          1.7342549732503538
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.708943048801615,
+        "minus_tikhonov": [
+          6.588737540785701,
+          6.313717508517496,
+          6.878504121004351
+        ]
+      },
+      "intervention_minus_control": [
+        5.058339187986562,
+        4.79862969039261,
+        5.328544033443755
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 1.5,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 36.28885010498758,
+      "mixed160": {
+        "psnr": 32.33862840055223,
+        "minus_tikhonov": [
+          -3.950221704435344,
+          -4.271529163664442,
+          -3.6090296723504283
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.17935519517224,
+        "minus_tikhonov": [
+          1.8905050901846494,
+          1.6517382884183895,
+          2.186709054684777
+        ]
+      },
+      "intervention_minus_control": [
+        5.840726794619992,
+        5.651670217816909,
+        6.021589239050261
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 2.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 35.11837742672606,
+      "mixed160": {
+        "psnr": 34.64517471835639,
+        "minus_tikhonov": [
+          -0.47320270836967976,
+          -1.0201426328089123,
+          0.07280635172510255
+        ]
+      },
+      "edgefill160": {
+        "psnr": 40.621546707124324,
+        "minus_tikhonov": [
+          5.50316928039827,
+          5.087256158700066,
+          5.935280696161094
+        ]
+      },
+      "intervention_minus_control": [
+        5.97637198876795,
+        5.532966430153681,
+        6.424769800383225
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 2.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 71.57330459341698,
+      "mixed160": {
+        "psnr": 39.80069123830639,
+        "minus_tikhonov": [
+          -31.772613355110575,
+          -34.8228517560493,
+          -28.973932766370844
+        ]
+      },
+      "edgefill160": {
+        "psnr": 44.118408651911224,
+        "minus_tikhonov": [
+          -27.454895941505736,
+          -30.506112394629575,
+          -24.717949743105965
+        ]
+      },
+      "intervention_minus_control": [
+        4.317717413604839,
+        4.0444534511671115,
+        4.550598194265904
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 2.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 30.0266014510024,
+      "mixed160": {
+        "psnr": 33.5906201441043,
+        "minus_tikhonov": [
+          3.564018693101904,
+          3.3420406307118964,
+          3.8017707929786195
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.243804879604205,
+        "minus_tikhonov": [
+          8.217203428601803,
+          7.946024467305577,
+          8.483423565304697
+        ]
+      },
+      "intervention_minus_control": [
+        4.653184735499899,
+        4.318652632715367,
+        4.974955946499992
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 2.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 34.77263893966845,
+      "mixed160": {
+        "psnr": 37.41991137255479,
+        "minus_tikhonov": [
+          2.6472724328863504,
+          2.411253689025892,
+          2.909115595987145
+        ]
+      },
+      "edgefill160": {
+        "psnr": 40.690836241265764,
+        "minus_tikhonov": [
+          5.918197301597322,
+          5.794532516247921,
+          6.064200888996015
+        ]
+      },
+      "intervention_minus_control": [
+        3.270924868710972,
+        3.0963918589848167,
+        3.4487855606284423
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 3.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 40.3071016103721,
+      "mixed160": {
+        "psnr": 42.435466471992015,
+        "minus_tikhonov": [
+          2.128364861619923,
+          1.6904389192768512,
+          2.5872707578915466
+        ]
+      },
+      "edgefill160": {
+        "psnr": 43.7948223419313,
+        "minus_tikhonov": [
+          3.4877207315592065,
+          3.0677762803987667,
+          3.9318347453012454
+        ]
+      },
+      "intervention_minus_control": [
+        1.3593558699392836,
+        1.2149137618238275,
+        1.4948028945786078
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 3.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 73.279712352437,
+      "mixed160": {
+        "psnr": 48.76053378700989,
+        "minus_tikhonov": [
+          -24.51917856542711,
+          -27.76769280656548,
+          -21.689746444469222
+        ]
+      },
+      "edgefill160": {
+        "psnr": 48.764728192715054,
+        "minus_tikhonov": [
+          -24.51498415972195,
+          -27.716060596820842,
+          -21.632682150579228
+        ]
+      },
+      "intervention_minus_control": [
+        0.004194405705164783,
+        -0.13367071057339633,
+        0.13482229893466569
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 3.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 30.511915450422844,
+      "mixed160": {
+        "psnr": 37.34475040676036,
+        "minus_tikhonov": [
+          6.8328349563375195,
+          6.61041415459019,
+          7.052118283632032
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.35342284597865,
+        "minus_tikhonov": [
+          7.841507395555811,
+          7.67032373507175,
+          8.01555822196214
+        ]
+      },
+      "intervention_minus_control": [
+        1.0086724392182926,
+        0.9113089261948845,
+        1.1127589839438015
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 3.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 32.47205892562187,
+      "mixed160": {
+        "psnr": 39.592424498638835,
+        "minus_tikhonov": [
+          7.120365573016959,
+          6.917654072152364,
+          7.31295518279931
+        ]
+      },
+      "edgefill160": {
+        "psnr": 40.36805281674349,
+        "minus_tikhonov": [
+          7.895993891121622,
+          7.769632814336975,
+          8.018962575201542
+        ]
+      },
+      "intervention_minus_control": [
+        0.775628318104663,
+        0.6787018669069966,
+        0.8736085905223743
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 4.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 44.10354965678807,
+      "mixed160": {
+        "psnr": 44.66755292869481,
+        "minus_tikhonov": [
+          0.5640032719067498,
+          0.12533693684664732,
+          1.033200707782806
+        ]
+      },
+      "edgefill160": {
+        "psnr": 45.214237810742475,
+        "minus_tikhonov": [
+          1.1106881539544111,
+          0.6459539409341714,
+          1.5953876942462235
+        ]
+      },
+      "intervention_minus_control": [
+        0.5466848820476613,
+        0.4803320994922629,
+        0.6134574047812666
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 4.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 73.98161588608872,
+      "mixed160": {
+        "psnr": 50.507265699743854,
+        "minus_tikhonov": [
+          -23.474350186344882,
+          -26.508834697483103,
+          -20.78233974731381
+        ]
+      },
+      "edgefill160": {
+        "psnr": 50.59348946615393,
+        "minus_tikhonov": [
+          -23.388126419934803,
+          -26.387035111309345,
+          -20.66393524276248
+        ]
+      },
+      "intervention_minus_control": [
+        0.08622376641007712,
+        -0.014439263204547218,
+        0.18514075499101645
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 4.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 29.82228362317472,
+      "mixed160": {
+        "psnr": 36.800639128907626,
+        "minus_tikhonov": [
+          6.978355505732909,
+          6.786750646219985,
+          7.167336456238541
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.11529130482203,
+        "minus_tikhonov": [
+          7.293007681647312,
+          7.121854071345424,
+          7.46533820752674
+        ]
+      },
+      "intervention_minus_control": [
+        0.31465217591440364,
+        0.27359827310386653,
+        0.35847894368008265
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 4.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 30.810715431727395,
+      "mixed160": {
+        "psnr": 38.552368161146624,
+        "minus_tikhonov": [
+          7.7416527294192266,
+          7.567988179009282,
+          7.906420887602553
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.02183224444429,
+        "minus_tikhonov": [
+          8.21111681271688,
+          8.066527125660043,
+          8.346583815684685
+        ]
+      },
+      "intervention_minus_control": [
+        0.4694640832976539,
+        0.42041073104830823,
+        0.5178206947424852
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 6.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 47.590988380129616,
+      "mixed160": {
+        "psnr": 44.38151389543449,
+        "minus_tikhonov": [
+          -3.2094744846951277,
+          -3.8450457130127274,
+          -2.634959367353516
+        ]
+      },
+      "edgefill160": {
+        "psnr": 45.114789414454805,
+        "minus_tikhonov": [
+          -2.476198965674812,
+          -3.087684509633537,
+          -1.9062383210756768
+        ]
+      },
+      "intervention_minus_control": [
+        0.7332755190203162,
+        0.6311295041978375,
+        0.8185090877747851
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 6.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 74.19415904247383,
+      "mixed160": {
+        "psnr": 48.96779528330934,
+        "minus_tikhonov": [
+          -25.226363759164478,
+          -27.22713686182695,
+          -23.36309422789229
+        ]
+      },
+      "edgefill160": {
+        "psnr": 49.54314059225508,
+        "minus_tikhonov": [
+          -24.651018450218736,
+          -26.636032384413422,
+          -22.80918104244127
+        ]
+      },
+      "intervention_minus_control": [
+        0.5753453089457438,
+        0.46887370400163086,
+        0.6781506005337733
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 6.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 27.86332796044963,
+      "mixed160": {
+        "psnr": 34.07262587251285,
+        "minus_tikhonov": [
+          6.2092979120632235,
+          6.0015960159699695,
+          6.416471888456023
+        ]
+      },
+      "edgefill160": {
+        "psnr": 34.173455005004044,
+        "minus_tikhonov": [
+          6.310127044554414,
+          6.10711396758118,
+          6.517563659861754
+        ]
+      },
+      "intervention_minus_control": [
+        0.10082913249119123,
+        0.0696244815484023,
+        0.13320842418800902
+      ]
+    },
+    {
+      "sweep": "vessel_width",
+      "value": 6.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 28.36770379534867,
+      "mixed160": {
+        "psnr": 36.01489740922458,
+        "minus_tikhonov": [
+          7.647193613875916,
+          7.468699008236957,
+          7.827883611530675
+        ]
+      },
+      "edgefill160": {
+        "psnr": 36.342668682021475,
+        "minus_tikhonov": [
+          7.974964886672806,
+          7.8010451340551725,
+          8.14735404474717
+        ]
+      },
+      "intervention_minus_control": [
+        0.3277712727968904,
+        0.30659620395949044,
+        0.3498502252516551
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 0.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 26.225438645589712,
+      "mixed160": {
+        "psnr": 41.43273528379616,
+        "minus_tikhonov": [
+          15.207296638206452,
+          13.24880022454536,
+          16.986158482723837
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.65212924622095,
+        "minus_tikhonov": [
+          13.426690600631243,
+          11.61081022925387,
+          15.150824765138719
+        ]
+      },
+      "intervention_minus_control": [
+        -1.7806060375752097,
+        -2.3621221490066455,
+        -1.1729852916375105
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 0.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 37.230473561839766,
+      "mixed160": {
+        "psnr": 45.96827144899263,
+        "minus_tikhonov": [
+          8.73779788715286,
+          7.344145775885564,
+          10.063059701436009
+        ]
+      },
+      "edgefill160": {
+        "psnr": 44.19542854503273,
+        "minus_tikhonov": [
+          6.964954983192956,
+          5.506461001172222,
+          8.251609322054616
+        ]
+      },
+      "intervention_minus_control": [
+        -1.772842903959901,
+        -2.0796275939162734,
+        -1.4681803124433697
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 0.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 23.92280908420068,
+      "mixed160": {
+        "psnr": 36.60100998485299,
+        "minus_tikhonov": [
+          12.678200900652312,
+          11.519060022695928,
+          13.733110979564138
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.48683255483304,
+        "minus_tikhonov": [
+          11.564023470632364,
+          10.438130938424884,
+          12.617778382016539
+        ]
+      },
+      "intervention_minus_control": [
+        -1.1141774300199467,
+        -1.3900791537843729,
+        -0.809586785640568
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 0.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 27.153948165322777,
+      "mixed160": {
+        "psnr": 40.16325665078956,
+        "minus_tikhonov": [
+          13.009308485466795,
+          12.393543927107006,
+          13.589003733102029
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.27396926482983,
+        "minus_tikhonov": [
+          12.12002109950706,
+          11.328783706461039,
+          12.817544588814933
+        ]
+      },
+      "intervention_minus_control": [
+        -0.8892873859597333,
+        -1.1247092703668025,
+        -0.695960221794879
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 0.5,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 28.825098549710425,
+      "mixed160": {
+        "psnr": 34.958062930749705,
+        "minus_tikhonov": [
+          6.132964381039292,
+          5.740657949737054,
+          6.451492538588052
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.53200849022915,
+        "minus_tikhonov": [
+          9.706909940518736,
+          9.071435292687912,
+          10.26431477020076
+        ]
+      },
+      "intervention_minus_control": [
+        3.5739455594794434,
+        3.25505428771356,
+        3.8894755294713987
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 0.5,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 44.06321872730907,
+      "mixed160": {
+        "psnr": 35.616316211432036,
+        "minus_tikhonov": [
+          -8.446902515877026,
+          -8.841128879691079,
+          -8.116263080782025
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.4827870254465,
+        "minus_tikhonov": [
+          -4.5804317018625715,
+          -4.937311307787654,
+          -4.26753116322486
+        ]
+      },
+      "intervention_minus_control": [
+        3.8664708140144555,
+        3.724456360398423,
+        4.010793986021225
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 0.5,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 25.99187316945115,
+      "mixed160": {
+        "psnr": 33.703895818388204,
+        "minus_tikhonov": [
+          7.712022648937049,
+          7.377072225172122,
+          8.023252602436116
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.62834047255241,
+        "minus_tikhonov": [
+          9.636467303101249,
+          9.15796275026876,
+          10.109117991944586
+        ]
+      },
+      "intervention_minus_control": [
+        1.9244446541641995,
+        1.6970395666259561,
+        2.12691585088644
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 0.5,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 30.212329404209253,
+      "mixed160": {
+        "psnr": 34.77573342370344,
+        "minus_tikhonov": [
+          4.563404019494186,
+          4.3799936552130365,
+          4.7451020456906985
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.24905270399404,
+        "minus_tikhonov": [
+          7.036723299784791,
+          6.812381869821283,
+          7.241633510017602
+        ]
+      },
+      "intervention_minus_control": [
+        2.473319280290604,
+        2.315229187269072,
+        2.6285057933511697
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 1.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 34.68861273202537,
+      "mixed160": {
+        "psnr": 33.09835853929658,
+        "minus_tikhonov": [
+          -1.5902541927288016,
+          -2.010544597484168,
+          -1.1680784531970347
+        ]
+      },
+      "edgefill160": {
+        "psnr": 43.59250496908173,
+        "minus_tikhonov": [
+          8.903892237056365,
+          8.527456597106635,
+          9.297613691270532
+        ]
+      },
+      "intervention_minus_control": [
+        10.494146429785166,
+        10.30259361359263,
+        10.685185924730868
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 1.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 75.76434930180436,
+      "mixed160": {
+        "psnr": 36.3396672646371,
+        "minus_tikhonov": [
+          -39.424682037167244,
+          -39.73653974635151,
+          -39.0854521755012
+        ]
+      },
+      "edgefill160": {
+        "psnr": 47.315275458665,
+        "minus_tikhonov": [
+          -28.44907384313936,
+          -28.7790887162157,
+          -28.12883153462508
+        ]
+      },
+      "intervention_minus_control": [
+        10.975608194027888,
+        10.719987475901961,
+        11.231271365610755
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 1.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 29.210296217545043,
+      "mixed160": {
+        "psnr": 31.91825863649219,
+        "minus_tikhonov": [
+          2.7079624189471447,
+          2.3725498649238834,
+          3.050967556887617
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.91948323011819,
+        "minus_tikhonov": [
+          8.709187012573153,
+          8.346407204005141,
+          9.054813619430247
+        ]
+      },
+      "intervention_minus_control": [
+        6.0012245936260085,
+        5.706521604714889,
+        6.278880661642396
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 1.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 33.069818761658325,
+      "mixed160": {
+        "psnr": 34.528461535664945,
+        "minus_tikhonov": [
+          1.4586427740066095,
+          1.1667815185591213,
+          1.7508936073603414
+        ]
+      },
+      "edgefill160": {
+        "psnr": 40.16340105017224,
+        "minus_tikhonov": [
+          7.093582288513917,
+          6.942837245379233,
+          7.241768978349453
+        ]
+      },
+      "intervention_minus_control": [
+        5.634939514507307,
+        5.4067371894409035,
+        5.888308051252556
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 2.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 43.95990058997968,
+      "mixed160": {
+        "psnr": 46.05389323210211,
+        "minus_tikhonov": [
+          2.0939926421224335,
+          1.4389140450250972,
+          2.819229622064722
+        ]
+      },
+      "edgefill160": {
+        "psnr": 47.66360515468855,
+        "minus_tikhonov": [
+          3.7037045647088718,
+          3.029074377217052,
+          4.423315756226996
+        ]
+      },
+      "intervention_minus_control": [
+        1.6097119225864376,
+        1.451443414918011,
+        1.7645161710696766
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 2.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 87.79339400505162,
+      "mixed160": {
+        "psnr": 51.83814448167757,
+        "minus_tikhonov": [
+          -35.955249523374036,
+          -36.684633398537514,
+          -35.30493610311517
+        ]
+      },
+      "edgefill160": {
+        "psnr": 52.5303392299309,
+        "minus_tikhonov": [
+          -35.26305477512069,
+          -36.01590982186685,
+          -34.57292950363655
+        ]
+      },
+      "intervention_minus_control": [
+        0.6921947482533419,
+        0.6164835005015028,
+        0.7635543380400338
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 2.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 31.8114508354549,
+      "mixed160": {
+        "psnr": 38.95233243226886,
+        "minus_tikhonov": [
+          7.140881596813955,
+          6.8437474616343765,
+          7.431571855269532
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.97433485449689,
+        "minus_tikhonov": [
+          8.162884019041986,
+          7.9098627860373805,
+          8.407801527548061
+        ]
+      },
+      "intervention_minus_control": [
+        1.0220024222280286,
+        0.9221898212868263,
+        1.1199569812356591
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 2.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 33.526174376418886,
+      "mixed160": {
+        "psnr": 41.162686800714646,
+        "minus_tikhonov": [
+          7.636512424295759,
+          7.502620757171266,
+          7.765249809593599
+        ]
+      },
+      "edgefill160": {
+        "psnr": 41.91204446051253,
+        "minus_tikhonov": [
+          8.385870084093654,
+          8.268025873751315,
+          8.504725422595408
+        ]
+      },
+      "intervention_minus_control": [
+        0.7493576597978944,
+        0.6964745103243669,
+        0.8021186078812464
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 3.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 49.666524997880074,
+      "mixed160": {
+        "psnr": 47.5547255645336,
+        "minus_tikhonov": [
+          -2.111799433346475,
+          -2.836546478170166,
+          -1.3541824368546511
+        ]
+      },
+      "edgefill160": {
+        "psnr": 47.85714764269098,
+        "minus_tikhonov": [
+          -1.809377355189092,
+          -2.5476901765729756,
+          -1.057577858905388
+        ]
+      },
+      "intervention_minus_control": [
+        0.3024220781573831,
+        0.21631870791615213,
+        0.38601719578772237
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 3.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 87.33998523020855,
+      "mixed160": {
+        "psnr": 53.03335726835108,
+        "minus_tikhonov": [
+          -34.30662796185748,
+          -34.733821859845634,
+          -33.869422555368736
+        ]
+      },
+      "edgefill160": {
+        "psnr": 53.30355034652786,
+        "minus_tikhonov": [
+          -34.03643488368071,
+          -34.45876040587024,
+          -33.56931125250782
+        ]
+      },
+      "intervention_minus_control": [
+        0.27019307817677,
+        0.1944931350699674,
+        0.3418633950550414
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 3.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 31.970823193109048,
+      "mixed160": {
+        "psnr": 39.16868239812463,
+        "minus_tikhonov": [
+          7.19785920501558,
+          6.996129946925947,
+          7.395417103640785
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.42301434073386,
+        "minus_tikhonov": [
+          7.452191147624802,
+          7.268561197158327,
+          7.631536335084673
+        ]
+      },
+      "intervention_minus_control": [
+        0.25433194260922287,
+        0.19767287966359262,
+        0.3105439808158983
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 3.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 33.26810512202297,
+      "mixed160": {
+        "psnr": 41.466703056079794,
+        "minus_tikhonov": [
+          8.198597934056822,
+          8.07405632428327,
+          8.30854579608783
+        ]
+      },
+      "edgefill160": {
+        "psnr": 41.804913932195994,
+        "minus_tikhonov": [
+          8.53680881017302,
+          8.435150060878486,
+          8.633684979021188
+        ]
+      },
+      "intervention_minus_control": [
+        0.3382108761161998,
+        0.29962449405033675,
+        0.3797878354666205
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 4.0,
+      "label": "noiseless",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 52.30264308976628,
+      "mixed160": {
+        "psnr": 46.972279157005,
+        "minus_tikhonov": [
+          -5.330363932761282,
+          -5.874582875035675,
+          -4.77223835664616
+        ]
+      },
+      "edgefill160": {
+        "psnr": 47.44097746707511,
+        "minus_tikhonov": [
+          -4.861665622691177,
+          -5.411770208935589,
+          -4.294284080287852
+        ]
+      },
+      "intervention_minus_control": [
+        0.46869831007010665,
+        0.4000920632507628,
+        0.5343077893131756
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 4.0,
+      "label": "noiseless",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 86.67411290048594,
+      "mixed160": {
+        "psnr": 52.4747822809674,
+        "minus_tikhonov": [
+          -34.199330619518555,
+          -34.52472188438394,
+          -33.86707073504508
+        ]
+      },
+      "edgefill160": {
+        "psnr": 52.86893237025741,
+        "minus_tikhonov": [
+          -33.805180530228526,
+          -34.15812065619338,
+          -33.447364981088555
+        ]
+      },
+      "intervention_minus_control": [
+        0.39415008929001516,
+        0.3242113152202371,
+        0.45723340305886867
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 4.0,
+      "label": "high",
+      "sensors": 16,
+      "n_images": 20,
+      "tikhonov_psnr": 31.289627173122756,
+      "mixed160": {
+        "psnr": 38.148439051137174,
+        "minus_tikhonov": [
+          6.858811878014424,
+          6.656649203122257,
+          7.054219180599503
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.30602089590767,
+        "minus_tikhonov": [
+          7.016393722784909,
+          6.824951630460573,
+          7.197975905765558
+        ]
+      },
+      "intervention_minus_control": [
+        0.1575818447704858,
+        0.1093657451727177,
+        0.2051503912695536
+      ]
+    },
+    {
+      "sweep": "disc_blur",
+      "value": 4.0,
+      "label": "high",
+      "sensors": 64,
+      "n_images": 20,
+      "tikhonov_psnr": 32.44402460587763,
+      "mixed160": {
+        "psnr": 40.66226415465438,
+        "minus_tikhonov": [
+          8.218239548776769,
+          8.088194880142904,
+          8.329255336481793
+        ]
+      },
+      "edgefill160": {
+        "psnr": 40.949338960284884,
+        "minus_tikhonov": [
+          8.505314354407258,
+          8.404009216076,
+          8.598980660762264
+        ]
+      },
+      "intervention_minus_control": [
+        0.2870748056304905,
+        0.252382587093477,
+        0.32208636084686276
+      ]
+    }
+  ],
+  "control_max_abs_difference_from_prior_shift_analysis": 0.0,
+  "shape_test": [
+    {
+      "family": "blobs",
+      "label": "noiseless",
+      "sensors": 16,
+      "tikhonov_psnr": 44.431471735044695,
+      "mixed160": {
+        "psnr": 45.720156624628274,
+        "minus_tikhonov": [
+          1.2886848895835754,
+          0.5328732003779235,
+          2.0011989764587885
+        ]
+      },
+      "edgefill160": {
+        "psnr": 47.380466088822985,
+        "minus_tikhonov": [
+          2.9489943537783,
+          1.970157876012855,
+          3.845672067502007
+        ]
+      },
+      "intervention_minus_control": [
+        1.6603094641947245,
+        1.200375054692654,
+        2.173243057196855
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "noiseless",
+      "sensors": 64,
+      "tikhonov_psnr": 91.05055251202135,
+      "mixed160": {
+        "psnr": 52.027669691275804,
+        "minus_tikhonov": [
+          -39.02288282074554,
+          -39.96011348593906,
+          -38.21242330846983
+        ]
+      },
+      "edgefill160": {
+        "psnr": 52.46313762929317,
+        "minus_tikhonov": [
+          -38.58741488272817,
+          -39.29836118512338,
+          -37.95310397558501
+        ]
+      },
+      "intervention_minus_control": [
+        0.43546793801737166,
+        0.14863564966877693,
+        0.7491512107040842
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "noiseless",
+      "sensors": 16,
+      "tikhonov_psnr": 25.930063238163577,
+      "mixed160": {
+        "psnr": 41.84011970615783,
+        "minus_tikhonov": [
+          15.910056467994258,
+          14.97511219680666,
+          16.721666485803024
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.81684440854558,
+        "minus_tikhonov": [
+          13.886781170382005,
+          13.063531339251018,
+          14.652895899431423
+        ]
+      },
+      "intervention_minus_control": [
+        -2.0232752976122503,
+        -2.3156920887757293,
+        -1.7165744543177124
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "noiseless",
+      "sensors": 64,
+      "tikhonov_psnr": 36.674882509077946,
+      "mixed160": {
+        "psnr": 46.00562760268884,
+        "minus_tikhonov": [
+          9.330745093610892,
+          8.441384807142791,
+          10.185077306697943
+        ]
+      },
+      "edgefill160": {
+        "psnr": 44.14694794312488,
+        "minus_tikhonov": [
+          7.472065434046937,
+          6.607241147136335,
+          8.311171679764042
+        ]
+      },
+      "intervention_minus_control": [
+        -1.8586796595639543,
+        -2.149407552868109,
+        -1.5947380186500202
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "noiseless",
+      "sensors": 16,
+      "tikhonov_psnr": 26.217362434664697,
+      "mixed160": {
+        "psnr": 42.397712102752195,
+        "minus_tikhonov": [
+          16.180349668087498,
+          15.23235751368823,
+          17.050705651100195
+        ]
+      },
+      "edgefill160": {
+        "psnr": 41.01277879385785,
+        "minus_tikhonov": [
+          14.79541635919315,
+          13.856815069333026,
+          15.649984565380654
+        ]
+      },
+      "intervention_minus_control": [
+        -1.3849333088943474,
+        -1.653067639795711,
+        -1.1160192543983711
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "noiseless",
+      "sensors": 64,
+      "tikhonov_psnr": 37.26373629820808,
+      "mixed160": {
+        "psnr": 47.2685438822815,
+        "minus_tikhonov": [
+          10.004807584073433,
+          9.12101710999549,
+          10.792890256127578
+        ]
+      },
+      "edgefill160": {
+        "psnr": 45.54950714650814,
+        "minus_tikhonov": [
+          8.285770848300052,
+          7.46401727341435,
+          9.05953545209324
+        ]
+      },
+      "intervention_minus_control": [
+        -1.7190367357733793,
+        -1.9669509673141554,
+        -1.491373859292799
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "noiseless",
+      "sensors": 16,
+      "tikhonov_psnr": 26.1043287806365,
+      "mixed160": {
+        "psnr": 38.65795064506266,
+        "minus_tikhonov": [
+          12.553621864426164,
+          11.536019075651923,
+          13.64076987373439
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.795953775348735,
+        "minus_tikhonov": [
+          11.691624994712228,
+          10.742784353841504,
+          12.669689963853598
+        ]
+      },
+      "intervention_minus_control": [
+        -0.8619968697139311,
+        -1.0808964645304586,
+        -0.6216980153423765
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "noiseless",
+      "sensors": 64,
+      "tikhonov_psnr": 36.7143486431291,
+      "mixed160": {
+        "psnr": 45.03096268861114,
+        "minus_tikhonov": [
+          8.316614045482053,
+          7.3892409803548125,
+          9.263542212959731
+        ]
+      },
+      "edgefill160": {
+        "psnr": 43.22406043366725,
+        "minus_tikhonov": [
+          6.5097117905381445,
+          5.6305606360505625,
+          7.401441413850588
+        ]
+      },
+      "intervention_minus_control": [
+        -1.8069022549439075,
+        -2.0583535233626455,
+        -1.560314129380091
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "noiseless",
+      "sensors": 16,
+      "tikhonov_psnr": 31.915979214974353,
+      "mixed160": {
+        "psnr": 31.307920742615373,
+        "minus_tikhonov": [
+          -0.6080584723589804,
+          -0.902883164427761,
+          -0.3069557945634733
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.9944870424091,
+        "minus_tikhonov": [
+          4.078507827434745,
+          3.628169171241395,
+          4.526167427807594
+        ]
+      },
+      "intervention_minus_control": [
+        4.686566299793725,
+        4.185923753266513,
+        5.195695631645127
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "noiseless",
+      "sensors": 64,
+      "tikhonov_psnr": 66.59633531444308,
+      "mixed160": {
+        "psnr": 33.4374286843512,
+        "minus_tikhonov": [
+          -33.158906630091884,
+          -35.04421191043686,
+          -31.265855360059728
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.53901170971966,
+        "minus_tikhonov": [
+          -28.057323604723425,
+          -29.779988691426954,
+          -26.323325125697295
+        ]
+      },
+      "intervention_minus_control": [
+        5.101583025368467,
+        4.629023815761962,
+        5.549883474203805
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "low",
+      "sensors": 16,
+      "tikhonov_psnr": 39.97290025268271,
+      "mixed160": {
+        "psnr": 45.702644369160296,
+        "minus_tikhonov": [
+          5.729744116477577,
+          5.2574924111926675,
+          6.1767999493195065
+        ]
+      },
+      "edgefill160": {
+        "psnr": 47.35999872067148,
+        "minus_tikhonov": [
+          7.387098467988759,
+          7.053601076294349,
+          7.706323586614973
+        ]
+      },
+      "intervention_minus_control": [
+        1.657354351511181,
+        1.197803102067701,
+        2.1704035143183553
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "low",
+      "sensors": 64,
+      "tikhonov_psnr": 52.354565713523336,
+      "mixed160": {
+        "psnr": 51.96362391517819,
+        "minus_tikhonov": [
+          -0.3909417983451421,
+          -1.3092622468586965,
+          0.40238214332567473
+        ]
+      },
+      "edgefill160": {
+        "psnr": 52.403366425668416,
+        "minus_tikhonov": [
+          0.04880071214508277,
+          -0.6748186472607256,
+          0.66143280820769
+        ]
+      },
+      "intervention_minus_control": [
+        0.43974251049022484,
+        0.15533084380003528,
+        0.752216210370969
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "low",
+      "sensors": 16,
+      "tikhonov_psnr": 24.909591587723845,
+      "mixed160": {
+        "psnr": 41.80215540507234,
+        "minus_tikhonov": [
+          16.892563817348503,
+          15.954637586536958,
+          17.707644178877956
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.794529005396114,
+        "minus_tikhonov": [
+          14.884937417672269,
+          14.064825366955262,
+          15.648644933938446
+        ]
+      },
+      "intervention_minus_control": [
+        -2.007626399676232,
+        -2.3064099043146267,
+        -1.7005067070779623
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "low",
+      "sensors": 64,
+      "tikhonov_psnr": 29.878631732390037,
+      "mixed160": {
+        "psnr": 45.96864657012718,
+        "minus_tikhonov": [
+          16.09001483773714,
+          15.250982325236688,
+          16.88547505569598
+        ]
+      },
+      "edgefill160": {
+        "psnr": 44.11856284716746,
+        "minus_tikhonov": [
+          14.239931114777427,
+          13.412032474469454,
+          15.049149299184135
+        ]
+      },
+      "intervention_minus_control": [
+        -1.8500837229597122,
+        -2.1409781595162283,
+        -1.5835892333477304
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "low",
+      "sensors": 16,
+      "tikhonov_psnr": 25.238893030771248,
+      "mixed160": {
+        "psnr": 42.36839792542023,
+        "minus_tikhonov": [
+          17.129504894648985,
+          16.187948966050325,
+          18.006618622934873
+        ]
+      },
+      "edgefill160": {
+        "psnr": 40.99812812429038,
+        "minus_tikhonov": [
+          15.759235093519134,
+          14.802681700670357,
+          16.61367200503634
+        ]
+      },
+      "intervention_minus_control": [
+        -1.370269801129849,
+        -1.6352418101896837,
+        -1.1054163729051103
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "low",
+      "sensors": 64,
+      "tikhonov_psnr": 30.200069399767617,
+      "mixed160": {
+        "psnr": 47.23088481779175,
+        "minus_tikhonov": [
+          17.030815418024133,
+          16.130982695485226,
+          17.83509095814607
+        ]
+      },
+      "edgefill160": {
+        "psnr": 45.524587281995025,
+        "minus_tikhonov": [
+          15.324517882227394,
+          14.48198752825654,
+          16.089648816166576
+        ]
+      },
+      "intervention_minus_control": [
+        -1.7062975357967378,
+        -1.9520653245654611,
+        -1.4803069203040862
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "low",
+      "sensors": 16,
+      "tikhonov_psnr": 25.13472987222606,
+      "mixed160": {
+        "psnr": 38.63078350420126,
+        "minus_tikhonov": [
+          13.496053631975196,
+          12.470043558967028,
+          14.576650962821233
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.78522742945187,
+        "minus_tikhonov": [
+          12.65049755722581,
+          11.697925716407845,
+          13.627079754599936
+        ]
+      },
+      "intervention_minus_control": [
+        -0.8455560747493862,
+        -1.0692100403907978,
+        -0.6047445645631269
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "low",
+      "sensors": 64,
+      "tikhonov_psnr": 29.673879482153282,
+      "mixed160": {
+        "psnr": 45.00692460556018,
+        "minus_tikhonov": [
+          15.333045123406908,
+          14.40266865410396,
+          16.272238048343727
+        ]
+      },
+      "edgefill160": {
+        "psnr": 43.21193859392533,
+        "minus_tikhonov": [
+          13.53805911177205,
+          12.67053986647134,
+          14.402648799142415
+        ]
+      },
+      "intervention_minus_control": [
+        -1.7949860116348557,
+        -2.046629090356084,
+        -1.549835309728633
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "low",
+      "sensors": 16,
+      "tikhonov_psnr": 30.97449007693469,
+      "mixed160": {
+        "psnr": 31.307800466669207,
+        "minus_tikhonov": [
+          0.3333103897345061,
+          0.07329938531418695,
+          0.601884320634347
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.993462288798284,
+        "minus_tikhonov": [
+          5.0189722118635975,
+          4.515596484130378,
+          5.509061982923612
+        ]
+      },
+      "intervention_minus_control": [
+        4.6856618221290915,
+        4.184152214349198,
+        5.1940203918789205
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "low",
+      "sensors": 64,
+      "tikhonov_psnr": 49.4681916218528,
+      "mixed160": {
+        "psnr": 33.434889728423535,
+        "minus_tikhonov": [
+          -16.033301893429265,
+          -16.727861258948753,
+          -15.316788217538837
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.53432344492658,
+        "minus_tikhonov": [
+          -10.933868176926223,
+          -11.707012924117402,
+          -10.216287880337
+        ]
+      },
+      "intervention_minus_control": [
+        5.099433716503042,
+        4.627581198517325,
+        5.546814198475295
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "moderate",
+      "sensors": 16,
+      "tikhonov_psnr": 36.8389938771566,
+      "mixed160": {
+        "psnr": 45.18155727193163,
+        "minus_tikhonov": [
+          8.342563394775038,
+          7.786764645686839,
+          8.863453967426906
+        ]
+      },
+      "edgefill160": {
+        "psnr": 46.769546111250705,
+        "minus_tikhonov": [
+          9.930552234094103,
+          9.738021017803854,
+          10.118377071688903
+        ]
+      },
+      "intervention_minus_control": [
+        1.5879888393190669,
+        1.1327777364281035,
+        2.0820254250581276
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "moderate",
+      "sensors": 64,
+      "tikhonov_psnr": 44.65871878924144,
+      "mixed160": {
+        "psnr": 50.75987478446942,
+        "minus_tikhonov": [
+          6.101155995227991,
+          5.3399465388233995,
+          6.76083231575905
+        ]
+      },
+      "edgefill160": {
+        "psnr": 51.21732987322493,
+        "minus_tikhonov": [
+          6.558611083983496,
+          5.980015237940218,
+          7.062408972029394
+        ]
+      },
+      "intervention_minus_control": [
+        0.4574550887555057,
+        0.2065705413572182,
+        0.734244805308386
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "moderate",
+      "sensors": 16,
+      "tikhonov_psnr": 24.43446577059811,
+      "mixed160": {
+        "psnr": 41.23228353471079,
+        "minus_tikhonov": [
+          16.797817764112686,
+          15.932166311713463,
+          17.54766903016592
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.34640852482699,
+        "minus_tikhonov": [
+          14.911942754228894,
+          14.136602922793847,
+          15.631280571105682
+        ]
+      },
+      "intervention_minus_control": [
+        -1.8858750098837933,
+        -2.1658418558861574,
+        -1.596416651172102
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "moderate",
+      "sensors": 64,
+      "tikhonov_psnr": 28.014064401200944,
+      "mixed160": {
+        "psnr": 45.17577328877733,
+        "minus_tikhonov": [
+          17.161708887576378,
+          16.41757603951544,
+          17.856949074289172
+        ]
+      },
+      "edgefill160": {
+        "psnr": 43.5069076394512,
+        "minus_tikhonov": [
+          15.492843238250257,
+          14.738436486067355,
+          16.207995036400305
+        ]
+      },
+      "intervention_minus_control": [
+        -1.6688656493261242,
+        -1.935241060984951,
+        -1.4262407460589603
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "moderate",
+      "sensors": 16,
+      "tikhonov_psnr": 24.789719267865113,
+      "mixed160": {
+        "psnr": 42.04807447716931,
+        "minus_tikhonov": [
+          17.25835520930419,
+          16.3630803549707,
+          18.098524303130592
+        ]
+      },
+      "edgefill160": {
+        "psnr": 40.68287526892035,
+        "minus_tikhonov": [
+          15.893156001055234,
+          14.975935946642126,
+          16.72497055550151
+        ]
+      },
+      "intervention_minus_control": [
+        -1.3651992082489628,
+        -1.6197440227622464,
+        -1.0995764687098957
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "moderate",
+      "sensors": 64,
+      "tikhonov_psnr": 28.377491906129418,
+      "mixed160": {
+        "psnr": 46.501556104740686,
+        "minus_tikhonov": [
+          18.12406419861127,
+          17.306400970271074,
+          18.840551960474247
+        ]
+      },
+      "edgefill160": {
+        "psnr": 44.98473176575794,
+        "minus_tikhonov": [
+          16.607239859628528,
+          15.837819554386188,
+          17.32849648403529
+        ]
+      },
+      "intervention_minus_control": [
+        -1.516824338982739,
+        -1.736221532706826,
+        -1.3142753147490547
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "moderate",
+      "sensors": 16,
+      "tikhonov_psnr": 24.7125152778255,
+      "mixed160": {
+        "psnr": 38.316523017417495,
+        "minus_tikhonov": [
+          13.604007739591996,
+          12.623457374557436,
+          14.666336888793165
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.55486226487003,
+        "minus_tikhonov": [
+          12.842346987044529,
+          11.906560031292093,
+          13.810261038819306
+        ]
+      },
+      "intervention_minus_control": [
+        -0.7616607525474653,
+        -0.9673042369363495,
+        -0.5317675595840495
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "moderate",
+      "sensors": 64,
+      "tikhonov_psnr": 27.87353619017505,
+      "mixed160": {
+        "psnr": 44.466912859989414,
+        "minus_tikhonov": [
+          16.59337666981437,
+          15.734077390582758,
+          17.44098731398689
+        ]
+      },
+      "edgefill160": {
+        "psnr": 42.81963541421618,
+        "minus_tikhonov": [
+          14.94609922404113,
+          14.120227987172083,
+          15.752610853547264
+        ]
+      },
+      "intervention_minus_control": [
+        -1.6472774457732402,
+        -1.8773403683244043,
+        -1.4207759788100607
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "moderate",
+      "sensors": 16,
+      "tikhonov_psnr": 30.14793905666935,
+      "mixed160": {
+        "psnr": 31.303677200301053,
+        "minus_tikhonov": [
+          1.1557381436317022,
+          0.8965848903068405,
+          1.4195812440715287
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.92882573202696,
+        "minus_tikhonov": [
+          5.780886675357608,
+          5.234415777070691,
+          6.318882885726925
+        ]
+      },
+      "intervention_minus_control": [
+        4.625148531725906,
+        4.12802780283819,
+        5.131798915775675
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "moderate",
+      "sensors": 64,
+      "tikhonov_psnr": 42.00102657894834,
+      "mixed160": {
+        "psnr": 33.400505208512534,
+        "minus_tikhonov": [
+          -8.600521370435816,
+          -9.117380108878322,
+          -8.07165141606611
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.443419974867176,
+        "minus_tikhonov": [
+          -3.557606604081166,
+          -4.194592896804015,
+          -2.937377721016609
+        ]
+      },
+      "intervention_minus_control": [
+        5.042914766354649,
+        4.5790312313328245,
+        5.485106736059991
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "high",
+      "sensors": 16,
+      "tikhonov_psnr": 33.5386188778688,
+      "mixed160": {
+        "psnr": 41.09241069457891,
+        "minus_tikhonov": [
+          7.55379181671011,
+          7.244720376972184,
+          7.85555575863688
+        ]
+      },
+      "edgefill160": {
+        "psnr": 42.22498835875976,
+        "minus_tikhonov": [
+          8.68636948089096,
+          8.437328372775143,
+          8.94634982815747
+        ]
+      },
+      "intervention_minus_control": [
+        1.1325776641808505,
+        0.7777466482071829,
+        1.5154750281545608
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "high",
+      "sensors": 64,
+      "tikhonov_psnr": 36.85199957173528,
+      "mixed160": {
+        "psnr": 44.35701194412845,
+        "minus_tikhonov": [
+          7.5050123723931605,
+          7.215583352002154,
+          7.745334442325102
+        ]
+      },
+      "edgefill160": {
+        "psnr": 44.83659813726304,
+        "minus_tikhonov": [
+          7.984598565527753,
+          7.812415966115371,
+          8.127965818304288
+        ]
+      },
+      "intervention_minus_control": [
+        0.4795861931345911,
+        0.36168531095425405,
+        0.6200050596749072
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "high",
+      "sensors": 16,
+      "tikhonov_psnr": 23.55105199405448,
+      "mixed160": {
+        "psnr": 36.69119738594829,
+        "minus_tikhonov": [
+          13.140145391893812,
+          12.583781476451682,
+          13.711862172322247
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.59270200469909,
+        "minus_tikhonov": [
+          12.041650010644611,
+          11.541722443127096,
+          12.565904524011307
+        ]
+      },
+      "intervention_minus_control": [
+        -1.0984953812491967,
+        -1.2818977826386861,
+        -0.9309479652793272
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "high",
+      "sensors": 64,
+      "tikhonov_psnr": 26.849656477013077,
+      "mixed160": {
+        "psnr": 39.8483347528403,
+        "minus_tikhonov": [
+          12.998678275827226,
+          12.63877824056373,
+          13.3561592536659
+        ]
+      },
+      "edgefill160": {
+        "psnr": 38.98386020203597,
+        "minus_tikhonov": [
+          12.134203725022896,
+          11.7522948287922,
+          12.52262860064316
+        ]
+      },
+      "intervention_minus_control": [
+        -0.8644745508043288,
+        -1.0131403432299009,
+        -0.7316787648554084
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "high",
+      "sensors": 16,
+      "tikhonov_psnr": 23.992921509495062,
+      "mixed160": {
+        "psnr": 37.85297429496389,
+        "minus_tikhonov": [
+          13.860052785468827,
+          13.174249564609472,
+          14.555605070295208
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.05636434610044,
+        "minus_tikhonov": [
+          13.063442836605375,
+          12.370002598352999,
+          13.748452987691817
+        ]
+      },
+      "intervention_minus_control": [
+        -0.7966099488634529,
+        -0.9581525417230035,
+        -0.6375947343501426
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "high",
+      "sensors": 64,
+      "tikhonov_psnr": 27.466606679535925,
+      "mixed160": {
+        "psnr": 41.387958655793454,
+        "minus_tikhonov": [
+          13.921351976257524,
+          13.454155287994215,
+          14.319390457566131
+        ]
+      },
+      "edgefill160": {
+        "psnr": 40.65647763854062,
+        "minus_tikhonov": [
+          13.18987095900469,
+          12.7148135817287,
+          13.604050128938379
+        ]
+      },
+      "intervention_minus_control": [
+        -0.7314810172528325,
+        -0.8548611920855023,
+        -0.6133881856870977
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "high",
+      "sensors": 16,
+      "tikhonov_psnr": 23.940234013617474,
+      "mixed160": {
+        "psnr": 35.67437970698093,
+        "minus_tikhonov": [
+          11.734145693363448,
+          11.017021204000887,
+          12.57181966738235
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.22157515366812,
+        "minus_tikhonov": [
+          11.28134114005065,
+          10.592723921093391,
+          12.040965156779293
+        ]
+      },
+      "intervention_minus_control": [
+        -0.4528045533128024,
+        -0.6432778757114388,
+        -0.255406944659694
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "high",
+      "sensors": 64,
+      "tikhonov_psnr": 26.967720455511557,
+      "mixed160": {
+        "psnr": 40.06161724122133,
+        "minus_tikhonov": [
+          13.093896785709774,
+          12.556535230311916,
+          13.61321141829629
+        ]
+      },
+      "edgefill160": {
+        "psnr": 39.14696839245407,
+        "minus_tikhonov": [
+          12.179247936942515,
+          11.623035254962767,
+          12.711488140092882
+        ]
+      },
+      "intervention_minus_control": [
+        -0.9146488487672606,
+        -1.0596181154186117,
+        -0.7762603070689029
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "high",
+      "sensors": 16,
+      "tikhonov_psnr": 28.780411805612676,
+      "mixed160": {
+        "psnr": 31.06687852702198,
+        "minus_tikhonov": [
+          2.286466721409312,
+          2.0452849107926916,
+          2.534206879264065
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.17937934055094,
+        "minus_tikhonov": [
+          6.398967534938268,
+          5.89791016704435,
+          6.885239577416958
+        ]
+      },
+      "intervention_minus_control": [
+        4.112500813528954,
+        3.7084619607574325,
+        4.528542768530822
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "high",
+      "sensors": 64,
+      "tikhonov_psnr": 36.15318733679488,
+      "mixed160": {
+        "psnr": 32.934362739591705,
+        "minus_tikhonov": [
+          -3.218824597203175,
+          -3.8085854623336663,
+          -2.592396186977656
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.333816063156895,
+        "minus_tikhonov": [
+          1.180628726362019,
+          0.4113623459153698,
+          1.9216087878308676
+        ]
+      },
+      "intervention_minus_control": [
+        4.399453323565194,
+        4.020133936166851,
+        4.755418376276652
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "severe",
+      "sensors": 16,
+      "tikhonov_psnr": 28.121980982256375,
+      "mixed160": {
+        "psnr": 34.78261684713462,
+        "minus_tikhonov": [
+          6.660635864878246,
+          6.444823041256938,
+          6.87307342872987
+        ]
+      },
+      "edgefill160": {
+        "psnr": 35.65201776938411,
+        "minus_tikhonov": [
+          7.530036787127735,
+          7.3348124782920845,
+          7.716648088949061
+        ]
+      },
+      "intervention_minus_control": [
+        0.869400922249488,
+        0.6898084732084508,
+        1.0697247598017794
+      ]
+    },
+    {
+      "family": "blobs",
+      "label": "severe",
+      "sensors": 64,
+      "tikhonov_psnr": 31.01341548538663,
+      "mixed160": {
+        "psnr": 37.2103505217953,
+        "minus_tikhonov": [
+          6.196935036408679,
+          6.046020102102801,
+          6.3435263306959735
+        ]
+      },
+      "edgefill160": {
+        "psnr": 37.76663117510261,
+        "minus_tikhonov": [
+          6.753215689715989,
+          6.633126755329823,
+          6.870892235377069
+        ]
+      },
+      "intervention_minus_control": [
+        0.5562806533073099,
+        0.4808029204235926,
+        0.640416713515049
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "severe",
+      "sensors": 16,
+      "tikhonov_psnr": 21.55730595624647,
+      "mixed160": {
+        "psnr": 29.125374732861225,
+        "minus_tikhonov": [
+          7.568068776614747,
+          7.191205804269644,
+          7.974421530891728
+        ]
+      },
+      "edgefill160": {
+        "psnr": 28.88260357464098,
+        "minus_tikhonov": [
+          7.325297618394506,
+          7.004541290952351,
+          7.658985711597986
+        ]
+      },
+      "intervention_minus_control": [
+        -0.2427711582202415,
+        -0.34512081281856166,
+        -0.1468941256074902
+      ]
+    },
+    {
+      "family": "discs",
+      "label": "severe",
+      "sensors": 64,
+      "tikhonov_psnr": 23.299365954963534,
+      "mixed160": {
+        "psnr": 32.56819619003398,
+        "minus_tikhonov": [
+          9.268830235070443,
+          8.973800757009375,
+          9.56352769247741
+        ]
+      },
+      "edgefill160": {
+        "psnr": 32.168235914971554,
+        "minus_tikhonov": [
+          8.868869960008023,
+          8.608450333643114,
+          9.14542278303204
+        ]
+      },
+      "intervention_minus_control": [
+        -0.3999602750624191,
+        -0.47239828867932226,
+        -0.3292515959954712
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "severe",
+      "sensors": 16,
+      "tikhonov_psnr": 22.351281053871336,
+      "mixed160": {
+        "psnr": 31.329441239850766,
+        "minus_tikhonov": [
+          8.978160185979421,
+          8.453838940251496,
+          9.530207937399211
+        ]
+      },
+      "edgefill160": {
+        "psnr": 30.965659175976374,
+        "minus_tikhonov": [
+          8.61437812210503,
+          8.123538996993744,
+          9.142939240489287
+        ]
+      },
+      "intervention_minus_control": [
+        -0.36378206387439077,
+        -0.4620784484735018,
+        -0.2748073391956206
+      ]
+    },
+    {
+      "family": "ellipses",
+      "label": "severe",
+      "sensors": 64,
+      "tikhonov_psnr": 24.042505450809877,
+      "mixed160": {
+        "psnr": 34.52604542789426,
+        "minus_tikhonov": [
+          10.483539977084376,
+          10.18443123179351,
+          10.754466162456039
+        ]
+      },
+      "edgefill160": {
+        "psnr": 34.0896281563071,
+        "minus_tikhonov": [
+          10.047122705497223,
+          9.750024074151776,
+          10.33009458016261
+        ]
+      },
+      "intervention_minus_control": [
+        -0.4364172715871548,
+        -0.4910011701674474,
+        -0.37886784347958885
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "severe",
+      "sensors": 16,
+      "tikhonov_psnr": 22.281801481225166,
+      "mixed160": {
+        "psnr": 30.11949815909938,
+        "minus_tikhonov": [
+          7.837696677874216,
+          7.326349181761898,
+          8.37807551701149
+        ]
+      },
+      "edgefill160": {
+        "psnr": 29.943754137398795,
+        "minus_tikhonov": [
+          7.661952656173634,
+          7.167252794267881,
+          8.173850975795741
+        ]
+      },
+      "intervention_minus_control": [
+        -0.17574402170058234,
+        -0.3093245936804078,
+        -0.04471674270163266
+      ]
+    },
+    {
+      "family": "rectangles",
+      "label": "severe",
+      "sensors": 64,
+      "tikhonov_psnr": 23.651000364723963,
+      "mixed160": {
+        "psnr": 33.3823160863595,
+        "minus_tikhonov": [
+          9.731315721635543,
+          9.300648685050316,
+          10.155071759266468
+        ]
+      },
+      "edgefill160": {
+        "psnr": 32.96436845010868,
+        "minus_tikhonov": [
+          9.313368085384717,
+          8.889362729751996,
+          9.720737706143249
+        ]
+      },
+      "intervention_minus_control": [
+        -0.41794763625082537,
+        -0.48788434671525516,
+        -0.35004094820188525
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "severe",
+      "sensors": 16,
+      "tikhonov_psnr": 26.333786701036328,
+      "mixed160": {
+        "psnr": 29.837618436591164,
+        "minus_tikhonov": [
+          3.5038317355548325,
+          3.334717889227587,
+          3.690541134933575
+        ]
+      },
+      "edgefill160": {
+        "psnr": 32.42050987732225,
+        "minus_tikhonov": [
+          6.0867231762859255,
+          5.776473578361129,
+          6.403140095977544
+        ]
+      },
+      "intervention_minus_control": [
+        2.5828914407310926,
+        2.3671683701760533,
+        2.808311962297532
+      ]
+    },
+    {
+      "family": "vessels",
+      "label": "severe",
+      "sensors": 64,
+      "tikhonov_psnr": 29.235410920545522,
+      "mixed160": {
+        "psnr": 31.281351597596746,
+        "minus_tikhonov": [
+          2.0459406770512154,
+          1.7630922972546004,
+          2.3212974572486362
+        ]
+      },
+      "edgefill160": {
+        "psnr": 34.240676686885635,
+        "minus_tikhonov": [
+          5.005265766340111,
+          4.641623783219618,
+          5.333675696334165
+        ]
+      },
+      "intervention_minus_control": [
+        2.9593250892888956,
+        2.7439529929834263,
+        3.1754391979796845
+      ]
+    }
+  ],
+  "blob_test": [
+    {
+      "label": "noiseless",
+      "sensors": 16,
+      "tikhonov_psnr": 43.56471670600598,
+      "mixed160": 45.35147033118086,
+      "edgefill160": [
+        47.2336608628423,
+        47.02604344602574,
+        47.4489672113562
+      ],
+      "intervention_minus_control": [
+        1.8821905316614396,
+        1.6420476588511275,
+        2.115713413391036
+      ]
+    },
+    {
+      "label": "noiseless",
+      "sensors": 64,
+      "tikhonov_psnr": 90.5121512756445,
+      "mixed160": 51.596012265127996,
+      "edgefill160": [
+        52.17102791733341,
+        51.9884908015245,
+        52.35251875778436
+      ],
+      "intervention_minus_control": [
+        0.5750156522054233,
+        0.4167235919509172,
+        0.7478688802027963
+      ]
+    },
+    {
+      "label": "low",
+      "sensors": 16,
+      "tikhonov_psnr": 39.7901857514443,
+      "mixed160": 45.33392277902521,
+      "edgefill160": [
+        47.2132700926399,
+        47.00769336773692,
+        47.42613931944257
+      ],
+      "intervention_minus_control": [
+        1.8793473136147048,
+        1.6395790232895877,
+        2.1139889165384407
+      ]
+    },
+    {
+      "label": "low",
+      "sensors": 64,
+      "tikhonov_psnr": 51.77765724126007,
+      "mixed160": 51.52821346197945,
+      "edgefill160": [
+        52.10432535901313,
+        51.923037191218455,
+        52.285528675354406
+      ],
+      "intervention_minus_control": [
+        0.5761118970336789,
+        0.4171962424777549,
+        0.7474556063398667
+      ]
+    },
+    {
+      "label": "moderate",
+      "sensors": 16,
+      "tikhonov_psnr": 36.71401001868584,
+      "mixed160": 44.84948869020305,
+      "edgefill160": [
+        46.64708442161691,
+        46.43660071763236,
+        46.849753303749196
+      ],
+      "intervention_minus_control": [
+        1.7975957314138504,
+        1.5620153180478784,
+        2.0291724276612717
+      ]
+    },
+    {
+      "label": "moderate",
+      "sensors": 64,
+      "tikhonov_psnr": 44.06231226023295,
+      "mixed160": 50.24478276239604,
+      "edgefill160": [
+        50.82099407122956,
+        50.65104314862405,
+        50.990508859471795
+      ],
+      "intervention_minus_control": [
+        0.5762113088335244,
+        0.4351934067181641,
+        0.731405014896457
+      ]
+    },
+    {
+      "label": "high",
+      "sensors": 16,
+      "tikhonov_psnr": 33.55077749149832,
+      "mixed160": 41.14096308839712,
+      "edgefill160": [
+        42.391983695693455,
+        42.11918273179895,
+        42.66242073827152
+      ],
+      "intervention_minus_control": [
+        1.2510206072963308,
+        1.0679311910074822,
+        1.4371442919923962
+      ]
+    },
+    {
+      "label": "high",
+      "sensors": 64,
+      "tikhonov_psnr": 36.27447369548905,
+      "mixed160": 43.73135696219186,
+      "edgefill160": [
+        44.293823307873154,
+        44.021651254688436,
+        44.57968146674573
+      ],
+      "intervention_minus_control": [
+        0.562466345681295,
+        0.4841601787926879,
+        0.6448206841384616
+      ]
+    },
+    {
+      "label": "severe",
+      "sensors": 16,
+      "tikhonov_psnr": 28.378776686416412,
+      "mixed160": 35.08012290869224,
+      "edgefill160": [
+        35.9739943982986,
+        35.61483681201814,
+        36.32823528931289
+      ],
+      "intervention_minus_control": [
+        0.8938714896063661,
+        0.7978407304987765,
+        0.9937588684347298
+      ]
+    },
+    {
+      "label": "severe",
+      "sensors": 64,
+      "tikhonov_psnr": 30.529211966918428,
+      "mixed160": 36.59047667658491,
+      "edgefill160": [
+        37.166521515847975,
+        36.83044648922295,
+        37.51707308295572
+      ],
+      "intervention_minus_control": [
+        0.5760448392630666,
+        0.5403443591051605,
+        0.6138900180033217
+      ]
+    }
+  ],
+  "criteria": {
+    "by_sensors": {
+      "16": {
+        "valley_advantage": {
+          "mixed160": 2.7079624189471447,
+          "edgefill160": 8.709187012573153
+        },
+        "valley_gain": 6.0012245936260085,
+        "paired_gain_at_blur_1": [
+          6.0012245936260085,
+          5.706521604714889,
+          6.278880661642396
+        ],
+        "S1_valley": true,
+        "loss_on_sharp": {
+          "disc_blur_0": 1.1141774300199467,
+          "discs": 1.0984953812491967,
+          "ellipses": 0.7966099488634529,
+          "rectangles": 0.4528045533128024
+        },
+        "loss_on_smooth": {
+          "disc_blur_2": -1.0220024222280286,
+          "disc_blur_3": -0.25433194260922287,
+          "disc_blur_4": -0.1575818447704858
+        },
+        "S2_no_harm": true,
+        "thin_vessel_gain": 3.294658030890393,
+        "S3_transfer": true
+      },
+      "64": {
+        "valley_advantage": {
+          "mixed160": 1.4586427740066095,
+          "edgefill160": 7.036723299784791
+        },
+        "valley_gain": 5.578080525778182,
+        "paired_gain_at_blur_1": [
+          5.634939514507307,
+          5.4067371894409035,
+          5.888308051252556
+        ],
+        "S1_valley": true,
+        "loss_on_sharp": {
+          "disc_blur_0": 0.8892873859597333,
+          "discs": 0.8644745508043288,
+          "ellipses": 0.7314810172528325,
+          "rectangles": 0.9146488487672606
+        },
+        "loss_on_smooth": {
+          "disc_blur_2": -0.7493576597978944,
+          "disc_blur_3": -0.3382108761161998,
+          "disc_blur_4": -0.2870748056304905
+        },
+        "S2_no_harm": true,
+        "thin_vessel_gain": 3.917193198732072,
+        "S3_transfer": true
+      }
+    },
+    "verdict": "supported",
+    "edge_gap_explanation_refuted": false
+  }
+}

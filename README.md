@@ -50,6 +50,12 @@ method; details and uncertainties are under Results.
   about 2 dB when the edges are blurred by one pixel, then recovers for smoother edges. A distance
   from the training images built on simple image statistics ranks the families correctly but does
   not detect that gap.
+- **The gap can be repaired by a targeted change of the training images.** In an experiment whose
+  design and success criteria were committed before training, replacing half of the sharp-edged
+  training images by copies with slightly blurred edges, at constant training-set size, raised the
+  worst advantage in the valley from about 2 dB to 7 to 9 dB, cost about 1 dB on sharp shapes, and
+  improved unseen thin vessels by 3 to 4 dB. The thinnest vessels with 64 sensors remain behind
+  Tikhonov.
 - **U-Net vs. time-reversal.** After calibrating time-reversal's amplitude on training data, the
   U-Net improves PSNR by 4.9 dB (16 sensors) and 3.2 dB (64 sensors), with 95 % intervals well above
   zero. Its advantage shrinks as sensor noise grows, and results vary by about 2 dB between
@@ -508,6 +514,60 @@ The explanation by a gap in edge sharpness was formed after the sweep was seen, 
 the vessel sweep, width and edge sharpness change together, so that sweep alone cannot separate
 them; the disc sweep varies edge sharpness at constant size.
 
+## Edge-Sharpness Intervention
+
+The prior-shift analysis suggested, after the fact, that the mixed networks fail on slightly blurred
+edges and thin vessels because their training images contain only one-pixel edges and smooth blobs.
+`scripts/edge_gap_intervention.py` tests this by changing the training images and nothing else. Its
+design, prediction and success criteria were committed (`d19c949`) before any network of the
+experiment was trained, and the verdict is computed by that unchanged code.
+
+- **Control:** the 5 networks trained on 160 mixed images.
+- **Intervention:** the same 160 images, with the same seeds, shapes, positions and sensor counts,
+  except that half of the images of each sharp-edged family (20 discs, 20 ellipses, 20 rectangles)
+  are replaced by the same image with its edges blurred by 0.25 to 1.5 pixels. Images are replaced,
+  not added. Architecture, training recipe, number of epochs and seeds are identical.
+- **Criteria at 14 dB SNR, for each sensor count:** the worst advantage over Tikhonov at 0.5 and
+  1 pixel of blur improves by at least 3 dB (S1); no more than 2 dB is lost on sharp shapes and 1 dB
+  on smoother ones (S2); the two thinnest vessels improve by at least 1 dB (S3, a transfer
+  prediction outside the verdict). A valley gain below 1 dB would have refuted the explanation.
+
+PSNR difference to Tikhonov in dB at 14 dB SNR over the disc-blur sweep (20 images per point):
+
+| Edge blur of discs [px] | 0 | 0.5 | 1 | 2 | 3 | 4 |
+|---|---|---|---|---|---|---|
+| Control, 16 sensors | +12.7 | +7.7 | +2.7 | +7.1 | +7.2 | +6.9 |
+| Intervention, 16 sensors | +11.6 | +9.6 | +8.7 | +8.2 | +7.5 | +7.0 |
+| Control, 64 sensors | +13.0 | +4.6 | +1.5 | +7.6 | +8.2 | +8.2 |
+| Intervention, 64 sensors | +12.1 | +7.0 | +7.1 | +8.4 | +8.5 | +8.5 |
+
+<p align="center">
+  <img src="report/edge_gap_intervention.png" width="760"
+       alt="PSNR advantage over Tikhonov against edge blur of discs and against vessel width, for the control networks and the networks trained with edge-blurred images, with and without noise, for 16 and 64 sensors.">
+</p>
+
+**Verdict by the criteria fixed in advance: supported.**
+
+- **S1, the valley is filled.** The worst advantage in the valley rises from 2.7 to 8.7 dB with 16
+  sensors and from 1.5 to 7.0 dB with 64, a gain of 6.0 and 5.6 dB; the paired gain at 1 pixel is
+  +6.0 [5.7, 6.3] and +5.6 [5.4, 5.9] dB. The response to blur is now nearly flat instead of dipping.
+- **S2, the cost stays inside the limits.** On sharp discs the intervention loses 1.1 and 0.9 dB, and
+  on the sharp families of the shape test set 0.5 to 1.1 dB, against a limit of 2 dB. At blurs of 2
+  to 4 pixels it is slightly better than the control (0.2 to 1.0 dB), as it is on the blob test set
+  (+1.3 and +0.6 dB).
+- **S3, thin vessels improve, without being trained on.** The mean gain on the two thinnest widths
+  is 3.3 and 3.9 dB. On the unseen vessel family of the shape test set the advantage over Tikhonov
+  goes from +2.3 to +6.4 dB with 16 sensors and from -3.2 to +1.2 dB with 64.
+- **What is not repaired.** The thinnest vessels (1 pixel) with 64 sensors remain 4.0 dB behind
+  Tikhonov (from 6.0 dB behind). Without noise, every network is still far behind Tikhonov on
+  smooth images with 64 sensors; the intervention narrows this at 1 pixel of blur by 11 dB and
+  leaves it otherwise unchanged.
+
+Read after the result: the improvement on vessels is consistent with edge sharpness being part of
+the vessel failure, but the remaining deficit on the thinnest lines shows it is not all of it. The
+experiment fills one identified gap in one training set; it does not show that the prior is now
+general.
+
 ## Key Findings
 
 - On 400 test images, a U-Net refinement improves on amplitude-calibrated time-reversal by 4.9 dB
@@ -539,6 +599,10 @@ them; the disc sweep varies edge sharpness at constant size.
   such: thin structures, and edges of a sharpness that lies between the kinds of image the network
   was trained on. A network trained on sharp and on smooth shapes is weakest on slightly blurred
   ones, and a distance built from simple image statistics does not flag them.
+- A pre-registered intervention confirmed the explanation for the dip: with intermediate edge
+  sharpness placed in the training set by replacement, the dip disappears at a cost of about 1 dB on
+  sharp shapes, and thin vessels improve although none was trained on. A learned prior can be
+  diagnosed with controlled shifts and repaired where the gap is identified, but only there.
 - Everything here is synthetic (five phantom families, two sensor counts, one simulator); it
   characterises this setup, not photoacoustic reconstruction in general.
 
@@ -603,6 +667,7 @@ photoacoustic-reconstruction/
 │   ├── unrolled_generalisation_check.py  the unrolled networks on phantoms unlike their training data
 │   ├── mixed_phantom_experiment.py  unrolled networks trained on four phantom families, against the blob-trained baseline
 │   ├── prior_shift_analysis.py   advantage over Tikhonov against distance from the training images, and controlled shifts
+│   ├── edge_gap_intervention.py  networks trained with edges of intermediate sharpness, against pre-set success criteria
 │   ├── evaluate_mvp.py           original 8-image PSNR/SSIM comparison
 │   ├── plot_comparison_shared_scale.py  comparison figure on a common display range
 │   ├── evaluate_calibrated_baseline.py  amplitude-calibrated time-reversal baseline
@@ -610,7 +675,7 @@ photoacoustic-reconstruction/
 ├── configs/                  mvp.yaml
 ├── data/                     generated splits, expanded test set, Tikhonov matrices (not committed)
 ├── experiments/              trained checkpoints (not committed)
-├── tests/                    117 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
+├── tests/                    121 tests: phantoms, forward model, baselines, evaluation, calibration, bootstrap, Tikhonov, devices, remote workflow
 └── report/                   evaluation figures and results
 ```
 
@@ -672,6 +737,10 @@ python scripts/mixed_phantom_experiment.py
 
 # prior-shift analysis of the trained networks (after mixed_phantom_experiment.py; about 10 minutes)
 python scripts/prior_shift_analysis.py
+
+# edge-sharpness intervention: 5 networks and their evaluation (after prior_shift_analysis.py;
+# about 2 hours on CPU; --train-seeds 0,1,2 trains a subset so that two processes can share the work)
+python scripts/edge_gap_intervention.py
 ```
 
 ## Reproducing the Experiments
@@ -691,7 +760,7 @@ run the first four scripts above in order. `evaluate_mvp.py` writes `report/mvp_
 pytest
 ```
 
-117 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
+121 tests. 42 of them cover phantom generation (shape, value range, reproducibility, seed sensitivity), the
 forward model (recording shape/finiteness, non-triviality, causality), the time-reversal baseline
 (no ground-truth leakage, reconstruction shape/finiteness, correlation with ground truth, and
 degradation under sparser arrays), the evaluation metrics (PSNR/SSIM sanity checks), and the
@@ -707,7 +776,8 @@ committed outputs, checkpoint portability and the remote GPU launchers, and 9 co
 network (data-consistency solves against the normal equations, reduction to Tikhonov and to iterated
 Tikhonov, routing by sensor count, gradients, checkpoints) and 11 cover the additional phantom
 families (value range, reproducibility, placement inside the sensor circle) and 4 cover the image
-statistics and the distance measure.
+statistics and the distance measure, and 4 cover the intervention (that only edge sharpness differs
+from the control training set, and the verdict logic).
 
 ## Limitations
 
@@ -738,8 +808,11 @@ statistics and the distance measure.
   trained on mixed data.
 - The prior-shift analysis uses 20 images per point in its sweeps and seven hand-chosen image
   statistics. The explanation of the mixed networks' dip by a gap in edge sharpness was formed after
-  seeing the sweep and has not been tested by training on intermediate sharpness. In the vessel
-  sweep, width and edge sharpness change together.
+  seeing the sweep; it was then tested by the edge-sharpness intervention. In the vessel sweep,
+  width and edge sharpness change together.
+- The intervention was evaluated on 20 images per sweep point, at one replacement fraction and one
+  blur range, and with 5 networks per arm that were still improving at their last epochs. It tests
+  one explanation on one training set; other gaps in the prior may exist that no sweep here probes.
 - All experiments run on laptop CPU (and MPS for the original network).
 
 ## References
