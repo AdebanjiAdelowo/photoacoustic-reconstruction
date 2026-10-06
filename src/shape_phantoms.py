@@ -97,6 +97,17 @@ def shape_phantom(family: str, size: int, seed: int) -> np.ndarray:
     return (img / img.max()).astype(np.float32)
 
 
+def blur_edges(image: np.ndarray, sigma_px: float) -> np.ndarray:
+    """Gaussian blur of standard deviation `sigma_px` pixels, renormalised to peak 1; sigma 0 returns
+    the image unchanged. Turns the one-pixel edges of the sharp families into edges of chosen width."""
+    if sigma_px <= 0:
+        return image
+    from scipy import ndimage
+
+    out = ndimage.gaussian_filter(image.astype(np.float64), sigma_px)
+    return (out / out.max()).astype(np.float32)
+
+
 def vessel_phantom(size: int, seed: int, width_px: float) -> np.ndarray:
     """The vessel phantom of `seed` with every line given the profile width `width_px` (standard
     deviation in pixels; the family itself draws 0.96 to 1.92 px on a 64-point grid)."""

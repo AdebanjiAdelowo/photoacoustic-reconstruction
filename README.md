@@ -503,6 +503,11 @@ PSNR difference to Tikhonov in dB at 14 dB SNR:
   global statistics explain the ranking of families; they are not a reliable detector of images the
   network will fail on.
 
+Three qualifications apply to this analysis. Each sweep point is 20 images (10 per sensor count).
+The explanation by a gap in edge sharpness was formed after the sweep was seen, not predicted. In
+the vessel sweep, width and edge sharpness change together, so that sweep alone cannot separate
+them; the disc sweep varies edge sharpness at constant size.
+
 ## Key Findings
 
 - On 400 test images, a U-Net refinement improves on amplitude-calibrated time-reversal by 4.9 dB
