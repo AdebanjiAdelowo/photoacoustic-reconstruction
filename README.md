@@ -32,12 +32,18 @@ method; details and uncertainties are under Results.
   23.7 dB with 16 sensors and 26.7 against 27.0 dB with 64 sensors at 14 dB SNR), and on noiseless
   64-sensor discs it is 10.6 dB behind. With 8 blobs instead of 1 to 3 it keeps a 9 to 10 dB lead.
   The check on other image types is small (10 images per condition).
-- **A broader training set moves the prior but does not make it general.** Trained on blobs, discs,
-  ellipses and rectangles together, the same network is 11 to 18 dB ahead of Tikhonov on the
-  sharp-edged families at 26 and 14 dB SNR and still 6 to 8 dB ahead on blobs, at a cost of 2 to
-  4 dB against the blob-trained network under strong noise. On a family it never saw (thin
-  vessel-like lines) it is only 1 to 4 dB ahead with 16 sensors from 26 dB SNR down, and behind
-  Tikhonov with 64 sensors at every noise level except the most severe.
+- **Prior-shift study.** Training the same network on four phantom families together (blobs, discs,
+  ellipses, rectangles) substantially improves reconstruction across the trained geometries: it is
+  11 to 18 dB ahead of Tikhonov on the sharp-edged families at 26 and 14 dB SNR and 6 to 8 dB ahead
+  on blobs, at a cost of 2 to 4 dB against the blob-trained network under strong noise. The
+  advantage over Tikhonov does not transfer consistently to an unseen family of thin vessel-like
+  lines, which exposes the dependence of the learned reconstruction prior on its training
+  distribution: at 14 dB SNR the mixed network is 2.3 dB ahead of Tikhonov with 16 sensors and
+  3.2 dB behind it with 64.
+- **More sensors do not automatically favour the learned method under distribution shift.** On the
+  unseen vessels at 14 dB SNR, going from 16 to 64 sensors improves Tikhonov by 7.4 dB (28.8 to
+  36.2 dB) and the mixed network by 1.9 dB (31.1 to 32.9 dB). Tikhonov uses the better-conditioned
+  measurements directly; the network stays limited by a prior learned from other images.
 - **U-Net vs. time-reversal.** After calibrating time-reversal's amplitude on training data, the
   U-Net improves PSNR by 4.9 dB (16 sensors) and 3.2 dB (64 sensors), with 95 % intervals well above
   zero. Its advantage shrinks as sensor noise grows, and results vary by about 2 dB between
@@ -407,8 +413,16 @@ networks, 95 % interval; full tables for all noise levels in `report/mixed_phant
   networks do better on these smooth, soft-edged lines (4 to 8 dB ahead of Tikhonov at 14 and 6 dB
   SNR) than the mixed networks, which were trained mostly on sharp edges. A broader training set
   moved the prior; it did not make it general.
-- **The amount of training data is not the limit here.** 40 and 160 mixed images give results within
-  about 1 dB of each other (up to 2 dB on rectangles).
+- **More sensors do not automatically favour the learned method under distribution shift.** On the
+  unseen vessels at 14 dB SNR the mixed network goes from 2.3 dB ahead of Tikhonov with 16 sensors
+  to 3.2 dB behind it with 64. Between the two sensor counts Tikhonov gains 7.4 dB (28.8 to 36.2 dB)
+  and the mixed network 1.9 dB (31.1 to 32.9 dB): Tikhonov uses the better-conditioned measurements
+  directly, while the network stays limited by a prior learned from other images. On the trained
+  families the network's lead is about the same at both sensor counts.
+- **Under this training protocol, 160 mixed images did not materially improve on 40.** Results are
+  within about 1 dB of each other (up to 2 dB on rectangles). Both sets were given the same number
+  of optimiser steps, and the 160-image networks were still improving at their last epoch, so this
+  says nothing general about how the method scales with data.
 
 ## Key Findings
 
@@ -433,8 +447,10 @@ networks, 95 % interval; full tables for all noise levels in `report/mixed_phant
   sharp-edged discs it disappears.
 - Training the unrolled network on four image families instead of one keeps a 6 to 18 dB advantage
   over Tikhonov under noise on all four, for a loss of 2 to 4 dB on blobs under strong noise
-  relative to the blob-trained network. On an unseen family the advantage is small or negative.
-  The method is as good as the match between its training images and the images it is given.
+  relative to the blob-trained network. On an unseen family of vessel-like lines the advantage is
+  small with 16 sensors and negative with 64 sensors at most noise levels: adding sensors helps
+  Tikhonov more than it helps a network whose prior does not fit the image. The learned method is as
+  good as the match between its training images and the images it is given.
 - Everything here is synthetic (five phantom families, two sensor counts, one simulator); it
   characterises this setup, not photoacoustic reconstruction in general.
 
