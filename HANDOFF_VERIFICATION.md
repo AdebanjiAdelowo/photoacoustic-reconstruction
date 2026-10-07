@@ -1,0 +1,10 @@
+# Handoff: photoacoustic reconstruction verification
+
+## Current scientific status
+The sparse-view photoacoustic task is a meaningful linear inverse problem under the synthetic homogeneous j-Wave model. Explicit dense A and exact transpose provide a defensible Tikhonov baseline. The repository correctly rejected an unreliable j-Wave autodiff transpose after adjoint-identity failure. The learned U-Net and unrolled model introduce data-distribution priors. Strong in-distribution PSNR does not establish inverse-physics correctness or clinical robustness. Thin/vessel-like failures are scientifically valuable distribution-shift evidence.
+
+## Local work
+Run all protocol-integrity, forward, Tikhonov, unrolled, calibration and thin-structure tests. Recheck the explicit A/A^T adjoint identity and conditioning. Preserve train/validation/test separation and fixed test noise/sensor draws. Clearly label noise-matched/oracle Tikhonov whenever it receives information unavailable to learned models. Reproduce thin-structure and mismatch studies without turning an observed correlation into a universal causal law. Synthetic phantoms must not be described as clinical validation.
+
+## Claude prompt
+Continue the scientific audit of photoacoustic-reconstruction. Read this handoff, docs/scientific_audit.md, README, protocol tests, Tikhonov/unrolled implementation and thin-structure study before editing. Run the full tests and verify A/A^T numerically. Confirm regularization/calibration choices use only permitted training/validation information. Reproduce headline methods on identical test cases/noise draws. Label any oracle/noise-matched baseline explicitly. Preserve vessel/thin-structure and model-mismatch failures as negative results and investigate them without overclaiming causality. Keep synthetic validation distinct from clinical claims. Show protocol evidence, old/new metrics and changed files before commits; do not merge or force-push.
