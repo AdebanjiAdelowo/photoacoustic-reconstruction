@@ -4,6 +4,18 @@ A comparative study of time-reversal, Tikhonov-regularised inversion, a learned 
 an unrolled network that combines a learned prior with the forward model, for photoacoustic
 (optoacoustic) tomography, evaluated on synthetic phantom data under sparse-view sensor arrays.
 
+## Scientific status at a glance
+
+| | |
+|---|---|
+| **Problem** | Sparse-view synthetic photoacoustic reconstruction |
+| **Methods** | Time reversal, Tikhonov inversion, U-Net refinement, model-based unrolled network |
+| **Verification** | Explicit discrete forward matrix and transpose, adjoint-identity tests, fixed train/validation/test protocols |
+| **Headline result** | Learned model-based inversion is strong in-distribution, but its advantage can disappear under structural distribution shift |
+| **Main qualification** | Synthetic homogeneous-medium study only; learned gains are training-distribution dependent and are not evidence of clinical performance |
+
+**Read first:** the Summary of findings for the quantitative results and their qualifications.
+
 ## Overview
 
 Photoacoustic tomography reconstructs an initial pressure distribution (an optical absorber map)
