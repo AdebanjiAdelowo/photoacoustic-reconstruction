@@ -4,6 +4,15 @@ A comparative study of time-reversal, Tikhonov-regularised inversion, a learned 
 an unrolled network that combines a learned prior with the forward model, for photoacoustic
 (optoacoustic) tomography, evaluated on synthetic phantom data under sparse-view sensor arrays.
 
+
+## Project overview
+
+Photoacoustic imaging tries to recover an internal image from sound waves generated after tissue absorbs a short pulse of light. When only a small number of sensors are available, the reconstruction becomes difficult and classical methods can produce strong artefacts.
+
+This project creates a controlled synthetic version of that problem and compares four approaches: time reversal, Tikhonov regularisation, a U-Net, and a model-based unrolled network that combines learned image processing with explicit data-consistency steps. The goal is not simply to find the method with the best score, but to understand when learned reconstruction helps and when that advantage breaks down.
+
+The strongest lesson is about generalisation: learned methods can perform very well on data similar to their training distribution, yet their advantage can shrink or disappear when the underlying image structure changes. All results are synthetic and are not presented as evidence of clinical performance.
+
 ## Scientific status at a glance
 
 | | |
