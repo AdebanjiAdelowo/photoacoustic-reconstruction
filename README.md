@@ -1,5 +1,7 @@
 # Photoacoustic Reconstruction: Model-Based vs. Learned Inversion Under Sparse-View Sensing
 
+[![Scientific CI](https://github.com/AdebanjiAdelowo/photoacoustic-reconstruction/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/AdebanjiAdelowo/photoacoustic-reconstruction/actions/workflows/ci.yml)
+
 A comparative study of time-reversal, Tikhonov-regularised inversion, a learned U-Net refinement and
 an unrolled network that combines a learned prior with the forward model, for photoacoustic
 (optoacoustic) tomography, evaluated on synthetic phantom data under sparse-view sensor arrays.
